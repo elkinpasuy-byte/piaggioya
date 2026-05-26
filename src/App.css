@@ -1,0 +1,294 @@
+/* Prevenir desbordamiento horizontal en móvil */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.leaflet-container {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.app-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.error-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  z-index: 1000;
+}
+
+.error-container h2 {
+  margin-bottom: 10px;
+}
+
+.error-container p {
+  margin-bottom: 20px;
+}
+
+/* Ocultar el atributo de Leaflet en móvil si es necesario */
+.leaflet-control-attribution {
+  font-size: 9px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+
+/*Fase 4: Agregar estilos globales para notificaciones (App.css actualizado):*/
+/* Estilos existentes se mantienen... */
+
+/* Nuevos estilos para notificaciones */
+.notification-toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 15px 25px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  z-index: 2000;
+  animation: slideUp 0.3s ease;
+  max-width: 90%;
+  text-align: center;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.notification-content {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.notification-content div {
+  margin: 2px 0;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateX(-50%) translateY(100px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Mejoras responsivas */
+@media (max-width: 768px) {
+  .piaggio-panel {
+    width: 280px;
+    right: 10px;
+    top: 10px;
+  }
+  
+  .panel-content {
+    max-height: 400px;
+  }
+  
+  .piaggios-list {
+    max-height: 300px;
+  }
+  
+  .notification-toast {
+    bottom: 20px;
+    padding: 12px 20px;
+  }
+  
+  .notification-content {
+    font-size: 12px;
+  }
+}
+
+/* Notificaciones flotantes */
+.notification-toast {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 15px 25px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  z-index: 2000;
+  animation: slideUp 0.3s ease;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateX(-50%) translateY(100px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  } 
+} 
+
+.share-whatsapp-btn { 
+  position: fixed;  
+  bottom: 20px; 
+  right: 20px;  
+  background: #25D366;  
+  color: white; 
+  border: none; 
+  border-radius: 50px;  
+  padding: 10px 16px; 
+  font-size: 12px;  
+  font-weight: 600; 
+  cursor: pointer;  
+  z-index: 1000;  
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);  
+}
+
+@media (max-width: 480px) {
+  .share-whatsapp-btn {
+    bottom: 70px;
+    right: 20px;
+    padding: 8px 12px;
+    font-size: 10px;
+  }
+}
+
+/* ========== BOTÓN COMPARTIR WHATSAPP ========== */
+.share-whatsapp-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #25D366;
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 10px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  transition: transform 0.2s;
+}
+
+.share-whatsapp-btn:hover {
+  transform: scale(1.02);
+}
+
+.share-whatsapp-btn:active {
+  transform: scale(0.98);
+}
+
+/* Móvil */
+@media (max-width: 480px) {
+  .share-whatsapp-btn {
+    bottom: 70px;
+    right: 16px;
+    padding: 8px 14px;
+    font-size: 10px;
+  }
+}
+
+/* Prevenir desbordamiento horizontal */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.leaflet-container {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ========== BOTONES FLOTANTES - SIEMPRE VISIBLES ========== */
+.clear-route-btn {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 40px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 9999;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  transition: all 0.2s;
+}
+
+.share-whatsapp-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #25D366;
+  color: white;
+  border: none;
+  border-radius: 40px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 9999;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  transition: all 0.2s;
+}
+
+.clear-route-btn:active,
+.share-whatsapp-btn:active {
+  transform: scale(0.96);
+}
+
+/* Móvil */
+@media (max-width: 480px) {
+  .clear-route-btn {
+    bottom: 16px;
+    left: 16px;
+    padding: 7px 14px;
+    font-size: 11px;
+  }
+  
+  .share-whatsapp-btn {
+    bottom: 16px;
+    right: 16px;
+    padding: 7px 14px;
+    font-size: 11px;
+  }
+}

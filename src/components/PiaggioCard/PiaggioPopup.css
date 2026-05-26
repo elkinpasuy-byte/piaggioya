@@ -1,0 +1,365 @@
+.piaggio-popup-container {
+  min-width: 260px;
+  max-width: 320px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header del popup */
+.popup-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 15px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.popup-icon {
+  font-size: 24px;
+  filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.2));
+}
+
+.popup-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  flex: 1;
+}
+
+/* Contenido del popup */
+.popup-content {
+  padding: 15px;
+  background: white;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 13px;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  font-weight: 600;
+  color: #555;
+  font-size: 12px;
+}
+
+.info-value {
+  color: #333;
+  font-weight: 500;
+  text-align: right;
+}
+
+.stars {
+  margin-left: 6px;
+  font-size: 11px;
+  color: #FFD700;
+  letter-spacing: 1px;
+}
+
+.highlight {
+  color: #667eea;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.price {
+  color: #4CAF50;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* Badge de estado */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  margin: 10px 0;
+  border-radius: 20px;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  width: fit-content;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.status-icon {
+  font-size: 12px;
+}
+
+.status-text {
+  letter-spacing: 0.5px;
+}
+
+/* Información de distancia */
+.distance-info {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 2px dashed #e0e0e0;
+  background: #f9f9f9;
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 10px;
+}
+
+.distance-row {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+/* Botones de acción */
+.select-button {
+  width: 100%;
+  padding: 12px;
+  margin: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.select-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.select-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.select-button.disabled {
+  background: #FF9800;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.select-button.maintenance {
+  background: #F44336;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Responsive para móviles */
+@media (max-width: 768px) {
+  .piaggio-popup-container {
+    min-width: 220px;
+    max-width: 280px;
+  }
+  
+  .popup-header {
+    padding: 10px 12px;
+  }
+  
+  .popup-title {
+    font-size: 14px;
+  }
+  
+  .popup-content {
+    padding: 10px;
+  }
+  
+  .info-row {
+    font-size: 11px;
+    padding: 4px 0;
+  }
+  
+  .info-label,
+  .info-value {
+    font-size: 11px;
+  }
+  
+  .select-button {
+    padding: 10px;
+    font-size: 12px;
+  }
+  
+  .price {
+    font-size: 12px;
+  }
+}
+
+/* Animación para selección */
+@keyframes selectPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.3);
+  }
+}
+
+.select-button:active {
+  animation: selectPulse 0.3s ease;
+}
+
+/* Scrollbar personalizado para popups largos */
+.piaggio-popup-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.piaggio-popup-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.piaggio-popup-container::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 2px;
+}
+
+/* Tooltip para información adicional */
+.info-value[title] {
+  cursor: help;
+  border-bottom: 1px dotted #ccc;
+}
+
+/* Mejora de legibilidad */
+.info-value strong {
+  color: #667eea;
+}
+
+/* Estilo para cuando el popup está cargando */
+.piaggio-popup-container.loading {
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.piaggio-popup-container.loading::after {
+  content: "⏳";
+  font-size: 24px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Estilos para distancia */
+.distance-highlight {
+  background: #e3f2fd;
+  margin: 5px -10px;
+  padding: 5px 10px;
+  border-radius: 8px;
+}
+
+.distance-value {
+  font-weight: 700;
+  color: #1976d2;
+  font-size: 14px;
+}
+
+.distance-indicator {
+  margin: 10px 0;
+  padding: 8px;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+
+.distance-progress {
+  height: 6px;
+  border-radius: 3px;
+  margin-bottom: 6px;
+  transition: width 0.3s ease;
+}
+
+.distance-label {
+  font-size: 11px;
+  color: #666;
+  display: block;
+  text-align: center;
+}
+
+/* Animación de pulso para el más cercano */
+@keyframes pulseDistance {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.distance-highlight {
+  animation: pulseDistance 1s ease;
+}
+
+/* ========== NUEVO: Botón favorito en popup ========== */
+.popup-favorite-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 20px;
+  padding: 0 4px;
+  transition: transform 0.2s ease;
+  color: #ccc;
+}
+
+.popup-favorite-btn:hover {
+  transform: scale(1.2);
+}
+
+.popup-favorite-btn.active {
+  color: #FFD700;
+  text-shadow: 0 0 2px rgba(255, 215, 0, 0.5);
+}
+/* ========== FIN NUEVO ========== */
+
+/* ========== NUEVO: Estilo para precio ========== */
+.price-highlight {
+  background: #e8f5e9;
+  margin: 5px -10px;
+  padding: 5px 10px;
+  border-radius: 8px;
+}
+
+.price-value {
+  font-weight: 700;
+  color: #4CAF50;
+  font-size: 14px;
+}
