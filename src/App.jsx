@@ -1,4 +1,4 @@
-import { PiaggioMap } from "./components/Map/PiaggioMap";
+import { PiaggioMap } from "./components/map/PiaggioMap";
 import { LoadingSpinner } from './components/Loading/LoadingSpinner';
 import { useGeolocation } from './hooks/useGeolocation';
 import { PiaggioPopup } from "./components/PiaggioCard/PiaggioPopup";
