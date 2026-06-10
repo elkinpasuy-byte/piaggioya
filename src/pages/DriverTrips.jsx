@@ -1,0 +1,377 @@
+// src/pages/DriverTrips.jsx
+// ==================== CONDUCTOR - LISTA DE ENVÍOS PENDIENTES ====================
+// Muestra envíos de carga (shipments) no aceptados
+
+import { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { getPendingShipments, acceptShipment, updateShipmentStatus } from '../services/shipmentService';
+
+export const DriverTrips = () => {
+  const { userData } = useAuth();
+  const navigate = useNavigate();
+  const [pendingShipments, setPendingShipments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [acceptingId, setAcceptingId] = useState(null);
+  const [error, setError] = useState(null);
+
+  // Cargar envíos pendientes desde shipments
+  useEffect(() => {
+    loadShipments();
+  }, []);
+
+  const loadShipments = async () => {
+  setLoading(true);
+  const result = await getPendingShipments();
+  if (result.success) {
+    const allShipments = result.data;
+    setPendingTrips(allShipments.filter(s => s.status === 'pending'));
+    setActiveTrips(allShipments.filter(s => 
+      s.status === 'accepted' || s.status === 'loaded'
+    ));
+    setError(null);
+  } else {
+    setError(result.error);
+  }
+  setLoading(false);
+};
+
+  // Aceptar un envío
+ const handleAcceptShipment = async (shipmentId) => {
+  setAcceptingId(shipmentId);
+  const result = await acceptShipment(
+    shipmentId,
+    userData?.email,
+    userData?.nombre,
+    userData?.telefono
+  );
+  
+  if (result.success) {
+    navigate(`/driver/trip/${shipmentId}`);
+  } else {
+    alert('❌ Error: ' + result.error);
+  }
+  setAcceptingId(null);
+};
+
+  
+
+  // Formatear precio (puedes ajustar la fórmula según tu negocio)
+  const calculatePrice = (weight, distance) => {
+    const basePrice = 5000;
+    const pricePerKg = 200;
+    const pricePerKm = 800;
+    const estimatedDistance = distance || 5; // Temporal, luego con geocodificación
+    return basePrice + (weight * pricePerKg) + (estimatedDistance * pricePerKm);
+  };
+
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0
+    }).format(price);
+  };
+
+  // Verificar si es conductor
+  if (!userData || (userData.role !== 'conductor' && userData.role !== 'conductor_pendiente')) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.card}>
+          <h2>Acceso denegado</h2>
+          <p>Solo conductores pueden ver esta página.</p>
+          <button onClick={() => navigate('/')} style={styles.backButton}>
+            Volver al mapa
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Si el conductor está pendiente de verificación
+  if (userData.role === 'conductor_pendiente') {
+    return (
+      <div style={styles.container}>
+        <div style={styles.card}>
+          <h2>⏳ Cuenta pendiente de verificación</h2>
+          <p>Tus documentos están siendo revisados por el administrador.</p>
+          <p>Podrás aceptar envíos cuando tu cuenta sea aprobada.</p>
+          <button onClick={() => navigate('/')} style={styles.backButton}>
+            Volver al mapa
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={styles.container}>
+      {/* Header */}
+      <div style={styles.header}>
+        <button onClick={() => navigate('/')} style={styles.backButton}>
+          ← Volver al mapa
+        </button>
+        <h1 style={styles.title}>📦 Envíos disponibles</h1>
+        <button onClick={loadShipments} style={styles.refreshButton}>
+          🔄
+        </button>
+      </div>
+
+      {error && (
+        <div style={styles.error}>
+          ❌ Error: {error}
+          <button onClick={loadShipments} style={styles.retryButton}>Reintentar</button>
+        </div>
+      )}
+
+      {loading ? (
+        <div style={styles.loading}>Cargando envíos...</div>
+      ) : pendingShipments.length === 0 ? (
+        <div style={styles.empty}>
+          <div style={styles.emptyIcon}>📭</div>
+          <div style={styles.emptyText}>No hay envíos pendientes</div>
+          <div style={styles.emptySub}>Los envíos aparecerán aquí cuando los clientes los soliciten</div>
+        </div>
+      ) : (
+        <div style={styles.list}>
+          {pendingShipments.map((shipment) => {
+            const estimatedPrice = calculatePrice(shipment.cargoWeight, 5);
+            return (
+              <div key={shipment.id} style={styles.card}>
+                {/* Cabecera */}
+                <div style={styles.cardHeader}>
+                  <span style={styles.tripId}>#{shipment.id.slice(-6)}</span>
+                  <span style={styles.badge}>🕐 Pendiente</span>
+                  <span style={styles.time}>
+                    {shipment.createdAt?.toDate?.() 
+                      ? new Date(shipment.createdAt.toDate()).toLocaleTimeString()
+                      : 'Reciente'}
+                  </span>
+                </div>
+                
+                {/* Información de la carga */}
+                <div style={styles.cargoInfo}>
+                  <div style={styles.cargoType}>
+                    📦 {shipment.cargoType || 'Carga general'} • {shipment.cargoWeight} kg
+                  </div>
+                </div>
+                
+                {/* Direcciones */}
+                <div style={styles.addresses}>
+                  <div style={styles.addressRow}>
+                    <span style={styles.addressIcon}>📍</span>
+                    <span style={styles.addressText}>{shipment.pickupAddress}</span>
+                  </div>
+                  <div style={styles.addressRow}>
+                    <span style={styles.addressIcon}>🏁</span>
+                    <span style={styles.addressText}>{shipment.deliveryAddress}</span>
+                  </div>
+                </div>
+                
+                {/* Cliente y precio */}
+                <div style={styles.details}>
+                  <div style={styles.detailRow}>
+                    <span>👤 Cliente:</span>
+                    <span>{shipment.clientName || shipment.clientId}</span>
+                  </div>
+                  <div style={styles.detailRow}>
+                    <span>💰 Pago estimado:</span>
+                    <span style={styles.price}>{formatPrice(estimatedPrice)}</span>
+                  </div>
+                </div>
+                
+                {/* Botón aceptar */}
+                <button
+                  onClick={() => handleAcceptShipment(shipment.id)}
+                  disabled={acceptingId === shipment.id}
+                  style={styles.acceptButton}
+                >
+                  {acceptingId === shipment.id ? 'Aceptando...' : '✅ Aceptar envío'}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const styles = {
+  container: {
+    minHeight: '100vh',
+    background: '#f5f5f5',
+    padding: '20px'
+  },
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: '20px',
+    flexWrap: 'wrap',
+    gap: '10px'
+  },
+  backButton: {
+    background: '#667eea',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    padding: '8px 16px',
+    cursor: 'pointer',
+    fontSize: '14px'
+  },
+  refreshButton: {
+    background: '#f0f0f0',
+    border: 'none',
+    borderRadius: '8px',
+    padding: '8px 12px',
+    cursor: 'pointer',
+    fontSize: '18px'
+  },
+  title: {
+    margin: 0,
+    fontSize: '20px',
+    fontWeight: '600'
+  },
+  error: {
+    background: '#fee',
+    color: '#c00',
+    padding: '12px',
+    borderRadius: '8px',
+    marginBottom: '16px',
+    textAlign: 'center'
+  },
+  retryButton: {
+    marginTop: '8px',
+    padding: '6px 12px',
+    background: '#667eea',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer'
+  },
+  loading: {
+    textAlign: 'center',
+    padding: '40px',
+    color: '#666'
+  },
+  empty: {
+    textAlign: 'center',
+    padding: '60px 20px',
+    background: 'white',
+    borderRadius: '16px'
+  },
+  emptyIcon: {
+    fontSize: '48px',
+    marginBottom: '16px'
+  },
+  emptyText: {
+    fontSize: '18px',
+    fontWeight: '500',
+    marginBottom: '8px'
+  },
+  emptySub: {
+    fontSize: '14px',
+    color: '#888'
+  },
+  list: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px'
+  },
+  card: {
+    background: 'white',
+    borderRadius: '16px',
+    padding: '16px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+  },
+  cardHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '12px',
+    paddingBottom: '8px',
+    borderBottom: '1px solid #eee',
+    flexWrap: 'wrap',
+    gap: '8px'
+  },
+  tripId: {
+    fontFamily: 'monospace',
+    fontSize: '11px',
+    color: '#888'
+  },
+  badge: {
+    background: '#fff3cd',
+    color: '#856404',
+    padding: '4px 8px',
+    borderRadius: '12px',
+    fontSize: '11px',
+    fontWeight: '500'
+  },
+  time: {
+    fontSize: '11px',
+    color: '#888'
+  },
+  cargoInfo: {
+    marginBottom: '12px'
+  },
+  cargoType: {
+    background: '#e3f2fd',
+    padding: '6px 10px',
+    borderRadius: '8px',
+    fontSize: '13px',
+    fontWeight: '500',
+    color: '#1565c0',
+    display: 'inline-block'
+  },
+  addresses: {
+    marginBottom: '12px',
+    padding: '8px',
+    background: '#f8f9fa',
+    borderRadius: '8px'
+  },
+  addressRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '13px',
+    marginBottom: '6px'
+  },
+  addressIcon: {
+    fontSize: '14px',
+    minWidth: '24px'
+  },
+  addressText: {
+    color: '#333',
+    flex: 1
+  },
+  details: {
+    marginBottom: '16px',
+    padding: '8px 0',
+    borderTop: '1px solid #eee',
+    borderBottom: '1px solid #eee'
+  },
+  detailRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '13px',
+    padding: '4px 0',
+    color: '#555'
+  },
+  price: {
+    fontWeight: '600',
+    color: '#28a745'
+  },
+  acceptButton: {
+    width: '100%',
+    padding: '12px',
+    background: 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)',
+    color: 'white',
+    border: 'none',
+    borderRadius: '12px',
+    fontSize: '14px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'transform 0.2s'
+  },
+};
