@@ -158,9 +158,10 @@ export const ClientTrips = () => {
                 )}
 
                 {isActive && (
-                 <button  onClick={() => navigate(`/trip/${shipment.id}`)} style={styles.trackBtn}>
-                📍 Seguir envío
-              </button>
+                 // En el botón "Seguir envío"
+<button onClick={() => navigate('/', { state: { shipmentId: shipment.id } })}>
+  📍 Seguir envío
+</button>
                 )}
 
                 {canRate && (

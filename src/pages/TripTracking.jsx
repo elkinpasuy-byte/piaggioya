@@ -7,7 +7,6 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { useAuth } from '../contexts/AuthContext';
 import { getShipmentById } from '../services/shipmentService';
-import { useRealtimeLocation } from '../hooks/useRealtimeLocation';
 import 'leaflet/dist/leaflet.css';
 
 // Icono para el conductor
@@ -32,6 +31,7 @@ const clientIcon = L.icon({
 
 export const TripTracking = () => {
   const { shipmentId } = useParams();
+  const shipmentIdFinal = id || shipmentId;
   const navigate = useNavigate();
   const { userData } = useAuth();
   const [trip, setTrip] = useState(null);
@@ -40,13 +40,8 @@ export const TripTracking = () => {
   const [clientLocation, setClientLocation] = useState(null);
 
   // Hook para ubicación en tiempo real
-  const { driverLocation, tripStatus, startTracking, stopTracking } = useRealtimeLocation(
-  shipmentId,
-    userData?.role,
-    (location) => {
-      console.log('Conductor en:', location);
-    }
-  );
+ const driverLocation = null;
+const tripStatus = trip?.status || null;
 
   // Cargar información del viaje
   useEffect(() => {
@@ -67,17 +62,8 @@ export const TripTracking = () => {
     loadTrip();
   },  [shipmentId]);
 
-  // Iniciar tracking si es conductor
-  useEffect(() => {
-    if (userData?.role === 'conductor' && tripStatus === 'accepted') {
-      startTracking();
-    }
-    return () => {
-      if (userData?.role === 'conductor') {
-        stopTracking();
-      }
-    };
-  }, [userData?.role, tripStatus, startTracking, stopTracking]);
+
+
 
   if (loading) {
     return <div style={styles.container}>Cargando viaje...</div>;
@@ -165,11 +151,11 @@ const mapCenter =
         <div style={styles.info}>
           <div style={styles.infoRow}>
             <span>🛵 Conductor:</span>
-            <span>{trip?.piaggioName || 'Asignando...'}</span>
+            <span>{trip?.driverName || 'Sin conductor'}</span>
           </div>
           <div style={styles.infoRow}>
             <span>🔢 Placa:</span>
-            <span>{trip?.piaggioPlaca || '---'}</span>
+           <span>{trip?.driverPhone || '---'}</span>
           </div>
           <div style={styles.infoRow}>
             <span>💰 Precio:</span>
@@ -186,7 +172,7 @@ const mapCenter =
           
           {isCliente && tripStatus === 'completed' && (
             <button 
-              onClick={() => navigate(`/rate-driver/${tripId}`)} 
+              onClick={() => navigate(`/rate-driver/${shipmentId}`)}
               style={styles.rateButton}
             >
               ⭐ Calificar viaje

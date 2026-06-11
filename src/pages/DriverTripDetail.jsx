@@ -1,4 +1,4 @@
-// src/pages/DriverTripDetail.jsx
+
 // Pantalla para conductor: mapa con ruta a recogida y luego a entrega
 
 import { useState, useEffect } from 'react';

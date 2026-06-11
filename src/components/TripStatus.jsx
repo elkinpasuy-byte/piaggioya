@@ -2,7 +2,7 @@
 // Muestra el estado del viaje activo del cliente
 
 import { useState, useEffect } from 'react';
-import { getClientTrips } from '../services/tripService';
+import { getClientShipments } from '../services/shipmentService';
 
 export const TripStatus = ({ userEmail }) => {
   const [activeTrip, setActiveTrip] = useState(null);
@@ -11,7 +11,7 @@ export const TripStatus = ({ userEmail }) => {
     if (!userEmail) return;
 
     const checkActiveTrip = async () => {
-      const result = await getClientTrips(userEmail);
+      const result = await getClientShipments(userEmail);
       if (result.success) {
         // Buscar viaje no completado
         const active = result.data.find(trip => 

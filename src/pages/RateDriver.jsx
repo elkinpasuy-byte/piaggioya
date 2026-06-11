@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { getTripById, rateTrip, updateDriverAverageRating } from '../services/tripService';
+import { getShipmentById, rateShipment, updateDriverAverageRating } from '../services/shipmentService';
 import { StarRating } from '../components/ui/StarRating';
 
 export const RateDriver = () => {
@@ -20,7 +20,7 @@ export const RateDriver = () => {
 
   useEffect(() => {
     const loadTrip = async () => {
-      const result = await getTripById(tripId);
+      const result = await getShipmentById(tripId);
       if (result.success) {
         setTrip(result.data);
         // Si ya fue calificado, mostrar la calificación existente
@@ -45,7 +45,7 @@ export const RateDriver = () => {
     setSubmitting(true);
     
     // Guardar calificación
-    const result = await rateTrip(tripId, rating, comment);
+    const result = await rateShipment(tripId, rating, comment);
     
     if (result.success) {
       // Actualizar promedio del conductor

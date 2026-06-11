@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getDriverTripsHistory } from '../services/tripService';
+import { getDriverShipmentsHistory } from '../services/shipmentService';
 import { useNavigate } from 'react-router-dom';
 
 export const DriverHistory = () => {
@@ -25,7 +25,7 @@ export const DriverHistory = () => {
   // Función para cargar viajes desde Firestore
   const loadTrips = async () => {
     setLoading(true);
-    const result = await getDriverTripsHistory(userData.email);
+    const result = await getDriverShipmentsHistory(userData?.email);
     
     if (result.success) {
       setTrips(result.data);

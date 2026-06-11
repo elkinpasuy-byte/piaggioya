@@ -140,30 +140,7 @@ const Home = () => {
               </button>
             )}
             
-            {(userData?.role === 'conductor' || userData?.role === 'conductor_pendiente') && (
-              <button
-                onClick={() => {
-                  setShowMenu(false);
-                  navigate('/driver/trips');
-                }}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: 'none',
-                  background: 'white',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  color: '#333',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  borderBottom: '1px solid #eee'
-                }}
-              >
-                📦 Envíos disponibles
-              </button>
-            )}
+      
             
             <button
               onClick={() => {
@@ -225,6 +202,8 @@ function AppContent() {
   {/* CLIENTE */}
   <Route path="/client/request" element={<ProtectedRoute><ClientRequest /></ProtectedRoute>} />
   <Route path="/client/trips" element={<ProtectedRoute><ClientTrips /></ProtectedRoute>} />
+  {/* Ruta para cliente (sigue su envío) */}
+<Route path="/track/:id" element={<ProtectedRoute><TripTracking /></ProtectedRoute>} />
 
 
   {/* CONDUCTOR */}
@@ -232,6 +211,9 @@ function AppContent() {
   <Route path="/driver/history" element={<ProtectedRoute><DriverHistory /></ProtectedRoute>} />
   <Route path="/driver/trip/:shipmentId" element={<ProtectedRoute><DriverTripDetail /></ProtectedRoute>} />
   <Route path="/trip/:shipmentId"element={<ProtectedRoute><TripTracking /></ProtectedRoute>}/>
+  {/* Ruta para conductor (después de aceptar) */}
+<Route path="/driver/trip/:shipmentId" element={<ProtectedRoute><TripTracking /></ProtectedRoute>} />
+
   {/* CALIFICACIÓN */}
   <Route path="/rate-driver/:tripId" element={<ProtectedRoute><RateDriver /></ProtectedRoute>} />
 

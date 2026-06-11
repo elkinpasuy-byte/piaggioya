@@ -22,17 +22,16 @@ export const DriverTrips = () => {
 
   const loadShipments = async () => {
   setLoading(true);
+
   const result = await getPendingShipments();
+
   if (result.success) {
-    const allShipments = result.data;
-    setPendingTrips(allShipments.filter(s => s.status === 'pending'));
-    setActiveTrips(allShipments.filter(s => 
-      s.status === 'accepted' || s.status === 'loaded'
-    ));
+    setPendingShipments(result.data);
     setError(null);
   } else {
     setError(result.error);
   }
+
   setLoading(false);
 };
 

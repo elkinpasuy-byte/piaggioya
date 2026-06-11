@@ -1,4 +1,4 @@
-  // src/services/tripService.js
+
 
   import { db } from '../firebase';
 

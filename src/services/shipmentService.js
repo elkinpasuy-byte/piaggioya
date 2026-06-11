@@ -1,16 +1,16 @@
 // src/services/shipmentService.js
 import { db } from '../firebase';
 import { 
-  collection, 
-  addDoc, 
-  doc, 
-  updateDoc, 
-  getDoc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy,
-  Timestamp
+ collection, 
+addDoc, 
+doc, 
+updateDoc, 
+getDoc, 
+getDocs, 
+query, 
+where, 
+orderBy,
+Timestamp
 } from 'firebase/firestore';
 
 const COLLECTION_NAME = 'shipments';
@@ -137,6 +137,77 @@ export const rateShipment = async (shipmentId, stars, comment = '') => {
     return { success: true };
   } catch (error) {
     console.error('Error calificando envío:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getDriverShipmentsHistory = async (driverId) => {
+  try {
+    const q = query(
+      collection(db, COLLECTION_NAME),
+      where('driverId', '==', driverId)
+    );
+
+    const querySnapshot = await getDocs(q);
+
+    const shipments = querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    return {
+      success: true,
+      data: shipments
+    };
+  } catch (error) {
+    console.error('Error obteniendo historial:', error);
+
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+// ==================== ACTUALIZAR CALIFICACIÓN PROMEDIO DEL CONDUCTOR ====================
+
+export const updateDriverAverageRating = async (driverEmail) => {
+  try {
+    if (!driverEmail) {
+      return { success: false, error: 'Email de conductor no proporcionado' };
+    }
+
+    // Obtener todas las calificaciones del conductor desde shipments
+    const q = query(
+      collection(db, 'shipments'),
+      where('driverId', '==', driverEmail),
+      where('rating.stars', '!=', null)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    let totalStars = 0;
+    let ratingCount = 0;
+    
+    querySnapshot.forEach((doc) => {
+      const stars = doc.data().rating?.stars;
+      if (stars) {
+        totalStars += stars;
+        ratingCount++;
+      }
+    });
+    
+    const averageRating = ratingCount > 0 ? totalStars / ratingCount : 0;
+    
+    // Actualizar el promedio en el documento del conductor (colección users)
+    const userRef = doc(db, 'users', driverEmail);
+    await updateDoc(userRef, {
+      averageRating,
+      totalRatings: ratingCount
+    });
+    
+    return { success: true, averageRating, totalRatings: ratingCount };
+  } catch (error) {
+    console.error('Error actualizando promedio del conductor:', error);
     return { success: false, error: error.message };
   }
 };

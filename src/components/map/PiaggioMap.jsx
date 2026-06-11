@@ -1,54 +1,41 @@
 // ========== IMPORTS ==========
-import { MapContainer, TileLayer, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 
-// ========== COMPONENTES ==========
+// COMPONENTES
 import { LocationMarker } from './LocationMarker';
 import { PiaggioMarkers } from './PiaggioMarkers';
 import { PiaggioPanel } from '../PiaggioPanel/PiaggioPanel';
+import { ConfirmTripModal } from '../modals/ConfirmTripModal';
+import { MapController } from './MapController';
 
-// ========== HOOKS ==========
+// HOOKS
 import { useRealTimePiaggios } from '../../hooks/useRealTimePiaggios';
 import { useLocalStorage } from '../../hooks/useLocalStorage';
 import { useRoute } from '../../hooks/useRoute';
-
 import { useAuth } from '../../contexts/AuthContext';
 
-// ========== MODAL ==========
-import { ConfirmTripModal } from '../modals/ConfirmTripModal';
-import { createShipment } from '../../services/shipmentService';
+// SERVICES
+import { createShipment, getShipmentById } from '../../services/shipmentService';
 
-// ========== ICONOS LEAFLET ==========
+// ICONOS LEAFLET
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl:
-    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl:
-    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
 
-// ========== MAP CONTROLLER ==========
-const MapController = ({ onMapReady }) => {
-  const map = useMap();
+// ========== COMPONENTE ==========
+export const PiaggioMap = ({ userLocation, onMapReady }) => {
+  const mapRef = useRef(null);
+  const location = useLocation();
 
-  useEffect(() => {
-    if (map) onMapReady(map);
-  }, [map, onMapReady]);
-
-  return null;
-};
-
-// ========== COMPONENTE PRINCIPAL ==========
-export const PiaggioMap = ({ userLocation }) => {
   const { piaggios, lastUpdate } = useRealTimePiaggios(userLocation, 4000);
-  const [favoriteId, setFavoriteId] = useLocalStorage(
-    'piaggiaya_favorite',
-    null
-  );
+  const [favoriteId, setFavoriteId] = useLocalStorage('piaggiaya_favorite', null);
 
   const [selectedPiaggio, setSelectedPiaggio] = useState(null);
   const [showNotification, setShowNotification] = useState(false);
@@ -56,161 +43,72 @@ export const PiaggioMap = ({ userLocation }) => {
   const notificationTimeoutRef = useRef(null);
 
   const [mapInstance, setMapInstance] = useState(null);
-  const { routeInfo, isCalculating, calculateRoute, clearRoute } =
-    useRoute(mapInstance);
+  const { routeInfo, isCalculating, calculateRoute, clearRoute } = useRoute(mapInstance);
 
   const { userData } = useAuth();
-  const [tripLoading, setTripLoading] = useState(false);
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedTripDetails, setSelectedTripDetails] = useState(null);
 
-  // ========== LIMPIEZA NOTIFICACIONES ==========
+  const handleMapReady = (map) => {
+    mapRef.current = map;
+    setMapInstance(map);
+    if (onMapReady) onMapReady(map);
+  };
+
+  // ===== LOAD SHIPMENT (CORREGIDO) =====
   useEffect(() => {
-    return () => {
-      if (notificationTimeoutRef.current) {
-        clearTimeout(notificationTimeoutRef.current);
+    const loadShipment = async () => {
+      const shipmentId = location.state?.shipmentId;
+      if (!shipmentId) return;
+
+      const result = await getShipmentById(shipmentId);
+
+      if (result.success && result.data?.pickupCoords && result.data?.deliveryCoords) {
+        calculateRoute(
+          { lat: result.data.pickupCoords.lat, lng: result.data.pickupCoords.lng },
+          [result.data.deliveryCoords.lat, result.data.deliveryCoords.lng]
+        );
       }
     };
-  }, []);
 
-  // ========== CALCULAR DISTANCIA ==========
+    loadShipment();
+  }, [location.state, calculateRoute]);
+
+  // ===== DISTANCIA =====
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
-    if (
-      lat1 == null ||
-      lon1 == null ||
-      lat2 == null ||
-      lon2 == null
-    )
-      return 0;
-
     const R = 6371;
-
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
     const dLon = ((lon2 - lon1) * Math.PI) / 180;
 
     const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.sin(dLat / 2) ** 2 +
       Math.cos((lat1 * Math.PI) / 180) *
         Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
+        Math.sin(dLon / 2) ** 2;
 
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return R * c;
+    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
   };
 
-  // ========== ABRIR MODAL ==========
-  const openConfirmModal = (piaggio, distance, duration, price) => {
-    setSelectedTripDetails({
-      piaggioId: piaggio.id,
-      piaggioName: piaggio.nombre,
-      piaggioPlaca: piaggio.placa,
-      distance,
-      distanceFormatted:
-        distance < 1
-          ? `${Math.round(distance * 1000)} m`
-          : `${distance.toFixed(1)} km`,
-      durationFormatted:
-        duration < 1 ? '< 1 min' : `${Math.round(duration)} min`,
-      estimatedPrice: price,
-    });
-
-    setShowConfirmModal(true);
-  };
-
-  // ========== SOLICITAR VIAJE ==========
- const handleRequestTrip = async () => {
-  if (!selectedTripDetails) return;
-  
-  const shipmentData = {
-    clientId: userData?.email,
-    clientName: userData?.nombre,
-    clientPhone: userData?.telefono,
-    pickupAddress: selectedTripDetails.pickupAddress || 'Dirección no especificada',
-    deliveryAddress: selectedTripDetails.deliveryAddress || 'Dirección no especificada',
-    pickupCoords: { lat: userLocation?.lat, lng: userLocation?.lng },
-    deliveryCoords: { lat: userLocation?.lat + 0.01, lng: userLocation?.lng + 0.01 },
-    cargoType: selectedTripDetails.cargoType || 'General',
-    cargoWeight: selectedTripDetails.cargoWeight || 50,
-    status: 'pending'
-  };
-  
-  const result = await createShipment(shipmentData);
-  
-  if (result.success) {
-    setShowConfirmModal(false);
-    setSelectedTripDetails(null);
-    setNotificationMessage('✅ Envío solicitado con éxito');
-    setShowNotification(true);
-    setTimeout(() => setShowNotification(false), 3000);
-  } else {
-    setNotificationMessage('❌ Error: ' + result.error);
-    setShowNotification(true);
-    setTimeout(() => setShowNotification(false), 3000);
-  }
-};
-
-  // ========== SELECCIONAR PIAGGIO ==========
+  // ===== SELECCIÓN PIAGGIO =====
   const handlePiaggioSelect = useCallback(
     (piaggio) => {
-      if (piaggio.estado !== 'disponible') {
-        setNotificationMessage(
-          `❌ ${piaggio.nombre} no está disponible`
-        );
-        setShowNotification(true);
-        return;
-      }
+      if (piaggio.estado !== 'disponible') return;
 
-      if (mapInstance && userLocation && piaggio.coordenadas) {
-        calculateRoute(
-          { lat: userLocation.lat, lng: userLocation.lng },
-          piaggio.coordenadas
-        );
+      if (mapInstance && userLocation) {
+        calculateRoute(userLocation, piaggio.coordenadas);
       }
 
       setSelectedPiaggio(piaggio);
-
-      setNotificationMessage(`✅ ${piaggio.nombre} seleccionado`);
-      setShowNotification(true);
-
-      clearTimeout(notificationTimeoutRef.current);
-      notificationTimeoutRef.current = setTimeout(() => {
-        setShowNotification(false);
-        setSelectedPiaggio(null);
-      }, 3000);
     },
     [mapInstance, userLocation, calculateRoute]
   );
 
-  // ========== FAVORITOS ==========
-  const handleToggleFavorite = useCallback(
-    (piaggioId) => {
-      if (favoriteId === piaggioId) {
-        setFavoriteId(null);
-        setNotificationMessage('⭐ Eliminado de favoritos');
-      } else {
-        setFavoriteId(piaggioId);
-        setNotificationMessage('⭐ Agregado a favoritos');
-      }
-
-      setShowNotification(true);
-      setTimeout(() => setShowNotification(false), 2000);
-    },
-    [favoriteId, setFavoriteId]
-  );
-
-  // ========== LOADING ==========
+  // ===== RENDER =====
   if (!userLocation) {
-    return (
-      <div style={{ textAlign: 'center', padding: '50px' }}>
-        Cargando mapa...
-      </div>
-    );
+    return <div>Cargando mapa...</div>;
   }
 
-  // ========== RENDER ==========
   return (
     <>
       <MapContainer
@@ -228,87 +126,27 @@ export const PiaggioMap = ({ userLocation }) => {
         <PiaggioMarkers
           piaggios={piaggios}
           userLocation={userLocation}
-          onPiaggioClick={(piaggio) => {
-            const distance = calculateDistance(
-              userLocation.lat,
-              userLocation.lng,
-              piaggio.coordenadas[0],
-              piaggio.coordenadas[1]
-            );
-
-            const price = 2000 + distance * 800;
-            const duration = (distance / 30) * 60;
-
-            openConfirmModal(piaggio, distance, duration, price);
-          }}
-          onToggleFavorite={handleToggleFavorite}
+          onPiaggioClick={handlePiaggioSelect}
+          onToggleFavorite={(id) => setFavoriteId(id)}
           favoriteId={favoriteId}
-          routeInfo={routeInfo}
-          isCalculating={isCalculating}
         />
 
-        <MapController onMapReady={setMapInstance} />
+        <MapController onMapReady={handleMapReady} />
       </MapContainer>
 
       <PiaggioPanel
         piaggios={piaggios}
         userLocation={userLocation}
-        onSelectPiaggio={handlePiaggioSelect}
         lastUpdate={lastUpdate}
+        onSelectPiaggio={handlePiaggioSelect}
       />
-
-      {/* PANEL INFERIOR */}
-      {routeInfo && (
-        <div style={{
-          position: 'fixed',
-          bottom: '20px',
-          left: '16px',
-          right: '16px',
-          background: 'rgba(255,255,255,0.95)',
-          borderRadius: '16px',
-          padding: '12px',
-          zIndex: 1000,
-          display: 'flex',
-          justifyContent: 'space-between'
-        }}>
-          <div>
-            <div>Viaje estimado</div>
-            <div>
-              {routeInfo.distanceFormatted} • {routeInfo.durationFormatted}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={clearRoute}>🗺️ Limpiar</button>
-          </div>
-        </div>
-      )}
 
       {/* MODAL */}
       <ConfirmTripModal
         isOpen={showConfirmModal}
         onClose={() => setShowConfirmModal(false)}
-        onConfirm={handleRequestTrip}
         tripDetails={selectedTripDetails}
-        isConfirming={tripLoading}
       />
-
-      {/* NOTIFICACIÓN */}
-      {showNotification && (
-        <div style={{
-          position: 'fixed',
-          top: '20px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          background: '#000',
-          color: '#fff',
-          padding: '10px 16px',
-          borderRadius: '20px',
-          zIndex: 2000
-        }}>
-          {notificationMessage}
-        </div>
-      )}
     </>
   );
 };
