@@ -10,7 +10,7 @@ import { LocationMarker } from './LocationMarker';
 import { PiaggioMarkers } from './PiaggioMarkers';
 import { PiaggioPanel } from '../PiaggioPanel/PiaggioPanel';
 import { ConfirmTripModal } from '../modals/ConfirmTripModal';
-import { MapController } from './MapController';
+import { MapController } from './MapController'; // ⚠️ asegúrate que exista
 
 // HOOKS
 import { useRealTimePiaggios } from '../../hooks/useRealTimePiaggios';
@@ -24,9 +24,12 @@ import { createShipment, getShipmentById } from '../../services/shipmentService'
 // ICONOS LEAFLET
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  iconRetinaUrl:
+    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl:
+    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl:
+    'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
 });
 
 // ========== COMPONENTE ==========
@@ -37,13 +40,14 @@ export const PiaggioMap = ({ userLocation, onMapReady }) => {
   const { piaggios, lastUpdate } = useRealTimePiaggios(userLocation, 4000);
   const [favoriteId, setFavoriteId] = useLocalStorage('piaggiaya_favorite', null);
 
-  const [selectedPiaggio, setSelectedPiaggio] = useState(null);
+ 
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
   const notificationTimeoutRef = useRef(null);
 
   const [mapInstance, setMapInstance] = useState(null);
-  const { routeInfo, isCalculating, calculateRoute, clearRoute } = useRoute(mapInstance);
+  const { routeInfo, isCalculating, calculateRoute, clearRoute } =
+    useRoute(mapInstance);
 
   const { userData } = useAuth();
 
@@ -56,24 +60,25 @@ export const PiaggioMap = ({ userLocation, onMapReady }) => {
     if (onMapReady) onMapReady(map);
   };
 
-  // ===== LOAD SHIPMENT (CORREGIDO) =====
+  // ===== LOAD SHIPMENT (arreglado) =====
   useEffect(() => {
-    const loadShipment = async () => {
-      const shipmentId = location.state?.shipmentId;
-      if (!shipmentId) return;
+  const loadShipment = async () => {
+    const shipmentId = location.state?.shipmentId;
+    if (!shipmentId) return;
 
-      const result = await getShipmentById(shipmentId);
+    const result = await getShipmentById(shipmentId);
 
-      if (result.success && result.data?.pickupCoords && result.data?.deliveryCoords) {
-        calculateRoute(
-          { lat: result.data.pickupCoords.lat, lng: result.data.pickupCoords.lng },
-          [result.data.deliveryCoords.lat, result.data.deliveryCoords.lng]
-        );
-      }
-    };
+    if (result.success && result.data?.pickupCoords && result.data?.deliveryCoords) {
+      // ✅ CORREGIDO: pasar en el formato que espera calculateRoute
+      calculateRoute(
+        { lat: result.data.pickupCoords.lat, lng: result.data.pickupCoords.lng },
+        [result.data.deliveryCoords.lat, result.data.deliveryCoords.lng]
+      );
+    }
+  };
 
-    loadShipment();
-  }, [location.state, calculateRoute]);
+  loadShipment();
+}, [location.state, calculateRoute]);
 
   // ===== DISTANCIA =====
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -89,26 +94,38 @@ export const PiaggioMap = ({ userLocation, onMapReady }) => {
 
     return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
   };
+// ===== SELECCIÓN PIAGGIO =====
+const handlePiaggioSelect = useCallback(
+  (piaggio) => {
+    if (piaggio.estado !== 'disponible') return;
 
-  // ===== SELECCIÓN PIAGGIO =====
-  const handlePiaggioSelect = useCallback(
-    (piaggio) => {
-      if (piaggio.estado !== 'disponible') return;
+    if (mapInstance && userLocation) {
+      calculateRoute(userLocation, piaggio.coordenadas);
+    }
 
-      if (mapInstance && userLocation) {
-        calculateRoute(userLocation, piaggio.coordenadas);
-      }
+    setSelectedPiaggio(piaggio);
+  },
+  [mapInstance, userLocation, calculateRoute]
+);
 
-      setSelectedPiaggio(piaggio);
-    },
-    [mapInstance, userLocation, calculateRoute]
-  );
-
-  // ===== RENDER =====
-  if (!userLocation) {
-    return <div>Cargando mapa...</div>;
+// ===== FAVORITOS =====
+const handleToggleFavorite = useCallback((piaggioId) => {
+  if (favoriteId === piaggioId) {
+    setFavoriteId(null);
+    setNotificationMessage('⭐ Eliminado de favoritos');
+  } else {
+    setFavoriteId(piaggioId);
+    setNotificationMessage('⭐ Agregado a favoritos');
   }
 
+  setShowNotification(true);
+  setTimeout(() => setShowNotification(false), 2000);
+}, [favoriteId, setFavoriteId]);
+
+// ===== RENDER =====
+if (!userLocation) {
+  return <div>Cargando mapa...</div>;
+}
   return (
     <>
       <MapContainer
@@ -124,22 +141,24 @@ export const PiaggioMap = ({ userLocation, onMapReady }) => {
         <LocationMarker position={userLocation} />
 
         <PiaggioMarkers
-          piaggios={piaggios}
-          userLocation={userLocation}
-          onPiaggioClick={handlePiaggioSelect}
-          onToggleFavorite={(id) => setFavoriteId(id)}
-          favoriteId={favoriteId}
-        />
+        piaggios={piaggios}
+        userLocation={userLocation}
+        onPiaggioClick={handlePiaggioSelect}
+        onToggleFavorite={handleToggleFavorite}
+        favoriteId={favoriteId}
+        routeInfo={routeInfo}
+        isCalculating={isCalculating}
+      />
 
         <MapController onMapReady={handleMapReady} />
       </MapContainer>
 
       <PiaggioPanel
-        piaggios={piaggios}
-        userLocation={userLocation}
-        lastUpdate={lastUpdate}
-        onSelectPiaggio={handlePiaggioSelect}
-      />
+      piaggios={piaggios}
+      userLocation={userLocation}
+      lastUpdate={lastUpdate}
+      onSelectPiaggio={handlePiaggioSelect}
+    />
 
       {/* MODAL */}
       <ConfirmTripModal

@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth, AuthProvider } from './contexts/AuthContext';
 import { Login } from './pages/Login';
+//import { PiaggioMap } from './components/map/Piaggiomap';
 import { PiaggioMap } from './components/map/PiaggioMap';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useState } from 'react';
@@ -43,10 +44,17 @@ const Home = () => {
     return <div style={{ textAlign: 'center', padding: '50px', color: 'red' }}>Error: {error}</div>;
   }
   
-  const handleLogout = async () => {
+const handleLogout = async () => {
+  try {
     await logout();
-    window.location.href = '/login';
-  };
+    // Limpia el estado local
+    setShowMenu(false);
+    // Redirige sin parámetros extra
+    navigate('/login', { replace: true });
+  } catch (error) {
+    console.error('Error al cerrar sesión:', error);
+  }
+};
   
   return (
     <div style={{ width: '100vw', height: '100vh', margin: 0, padding: 0, overflow: 'hidden' }}>
