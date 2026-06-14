@@ -44,6 +44,7 @@ export const PiaggioMap = ({ userLocation, onMapReady }) => {
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
   const notificationTimeoutRef = useRef(null);
+  const [selectedPiaggio, setSelectedPiaggio] = useState(null);
 
   const [mapInstance, setMapInstance] = useState(null);
   const { routeInfo, isCalculating, calculateRoute, clearRoute } =
@@ -54,11 +55,7 @@ export const PiaggioMap = ({ userLocation, onMapReady }) => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedTripDetails, setSelectedTripDetails] = useState(null);
 
-  const handleMapReady = (map) => {
-    mapRef.current = map;
-    setMapInstance(map);
-    if (onMapReady) onMapReady(map);
-  };
+  const handleMapReady = (map) => {mapRef.current = map;setMapInstance(map);if (onMapReady) onMapReady(map);};
 
   // ===== LOAD SHIPMENT (arreglado) =====
   useEffect(() => {
@@ -144,7 +141,8 @@ if (!userLocation) {
         piaggios={piaggios}
         userLocation={userLocation}
         onPiaggioClick={handlePiaggioSelect}
-        onToggleFavorite={handleToggleFavorite}
+        //onToggleFavorite={handleToggleFavorite}
+        onToggleFavorite={(id) => setFavoriteId(id)}
         favoriteId={favoriteId}
         routeInfo={routeInfo}
         isCalculating={isCalculating}
