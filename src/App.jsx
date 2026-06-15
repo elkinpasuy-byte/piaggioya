@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth, AuthProvider } from './contexts/AuthContext';
 import { Login } from './pages/Login';
 import { PiaggioMap } from './components/map/PiaggioMap';
@@ -106,10 +106,11 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<ProtectedRoute />} />
-          <Route path="/client/request" element={<ClientHome />} />
-          <Route path="/client/trips" element={<ClientHome />} />
-          <Route path="/driver/trips" element={<DriverHome />} />
-          <Route path="/driver/history" element={<DriverHome />} />
+         <Route path="/client/request" element={<ClientRequest />} />
+          <Route path="/client/trips" element={<ClientTrips />} />
+
+          <Route path="/driver/trips" element={<DriverTrips />} />
+          <Route path="/driver/history" element={<DriverHistory />} />
         </Routes>
       </Router>
     </AuthProvider>
