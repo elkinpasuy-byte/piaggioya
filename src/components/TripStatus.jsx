@@ -15,7 +15,7 @@ export const TripStatus = ({ userEmail }) => {
       if (result.success) {
         // Buscar viaje no completado
         const active = result.data.find(trip => 
-          trip.status === 'pending' || trip.status === 'accepted'
+          trip.status === 'pending' || trip.status === 'accepted' || trip.status === 'in_progress'
         );
         setActiveTrip(active);
       }
