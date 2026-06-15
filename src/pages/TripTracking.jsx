@@ -1,12 +1,11 @@
 // src/pages/TripTracking.jsx
-// Vista de seguimiento del viaje (cliente ve al conductor en el mapa)
-
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { useAuth } from '../contexts/AuthContext';
-import { getShipmentById } from '../services/shipmentService';
+import { getShipmentById, updateShipmentStatus } from '../services/shipmentService';
+import { useGeolocation } from '../hooks/useGeolocation';
 import 'leaflet/dist/leaflet.css';
 
 // Icono para el conductor
@@ -30,40 +29,45 @@ const clientIcon = L.icon({
 });
 
 export const TripTracking = () => {
-  const { shipmentId } = useParams();
+  const { id, shipmentId } = useParams();
   const shipmentIdFinal = id || shipmentId;
   const navigate = useNavigate();
   const { userData } = useAuth();
-  const [trip, setTrip] = useState(null);
+  const { location: driverLocation } = useGeolocation(); // Ubicación real del conductor
+  const [shipment, setShipment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [clientLocation, setClientLocation] = useState(null);
+  const [tripStatus, setTripStatus] = useState('');
 
-  // Hook para ubicación en tiempo real
- const driverLocation = null;
-const tripStatus = trip?.status || null;
-
-  // Cargar información del viaje
+  // Cargar información del envío
   useEffect(() => {
-    const loadTrip = async () => {
-     const result = await getShipmentById(shipmentId);
-     console.log('ENVIO FIREBASE:', result);
+    const loadShipment = async () => {
+      const result = await getShipmentById(shipmentIdFinal);
+      console.log('ENVIO FIREBASE:', result);
       if (result.success) {
-        setTrip(result.data);
-        setClientLocation({
-  lat: result.data.pickupCoords?.lat,
-  lng: result.data.pickupCoords?.lng
-});
+        setShipment(result.data);
+        setTripStatus(result.data.status);
       } else {
         setError(result.error);
       }
       setLoading(false);
     };
-    loadTrip();
-  },  [shipmentId]);
+    loadShipment();
+  }, [shipmentIdFinal]);
 
+  // Handlers para el conductor
+  const handleArrivedPickup = async () => {
+    await updateShipmentStatus(shipmentIdFinal, 'in_progress');
+    setTripStatus('in_progress');
+    alert('✅ Carga completada. Ahora dirígete al destino.');
+  };
 
-
+  const handleArrivedDelivery = async () => {
+    await updateShipmentStatus(shipmentIdFinal, 'delivered');
+    setTripStatus('delivered');
+    alert('✅ Envío completado. Gracias por tu servicio.');
+    navigate('/driver/trips');
+  };
 
   if (loading) {
     return <div style={styles.container}>Cargando viaje...</div>;
@@ -81,27 +85,19 @@ const tripStatus = trip?.status || null;
     );
   }
 
+  if (!shipment) {
+    return <div style={styles.container}>Envío no encontrado</div>;
+  }
+
   const isConductor = userData?.role === 'conductor';
   const isCliente = userData?.role === 'cliente';
 
-  // Centro del mapa (ubicación del conductor si existe, si no la del cliente)
- console.log('driverLocation:', driverLocation);
-console.log('clientLocation:', clientLocation);
-
-const mapCenter =
-  driverLocation?.lat && driverLocation?.lng
+  // Centro del mapa
+  const mapCenter = driverLocation?.lat && driverLocation?.lng
     ? [driverLocation.lat, driverLocation.lng]
-    : clientLocation?.lat && clientLocation?.lng
-    ? [clientLocation.lat, clientLocation.lng]
-    : null;
-
-    if (!mapCenter) {
-  return (
-    <div style={{ padding: '20px' }}>
-      Esperando coordenadas...
-    </div>
-  );
-}
+    : shipment.pickupCoords?.lat && shipment.pickupCoords?.lng
+    ? [shipment.pickupCoords.lat, shipment.pickupCoords.lng]
+    : [4.6097, -74.0817];
 
   return (
     <div style={styles.container}>
@@ -116,25 +112,32 @@ const mapCenter =
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {/* Marcador del cliente (origen) */}
-        {clientLocation && (
-          <Marker position={[clientLocation.lat, clientLocation.lng]} icon={clientIcon}>
+        {/* Marcador de recogida */}
+        {shipment.pickupCoords && (
+          <Marker position={[shipment.pickupCoords.lat, shipment.pickupCoords.lng]} icon={clientIcon}>
             <Popup>
-              <strong>📍 Tu ubicación</strong><br />
-              {trip?.clientName}
+              <strong>📍 Punto de recogida</strong><br />
+              {shipment.pickupAddress}
             </Popup>
           </Marker>
         )}
 
-        {/* Marcador del conductor (en tiempo real) */}
+        {/* Marcador de entrega */}
+        {shipment.deliveryCoords && (
+          <Marker position={[shipment.deliveryCoords.lat, shipment.deliveryCoords.lng]} icon={deliveryIcon}>
+            <Popup>
+              <strong>🏁 Punto de entrega</strong><br />
+              {shipment.deliveryAddress}
+            </Popup>
+          </Marker>
+        )}
+
+        {/* Marcador del conductor (si está disponible) */}
         {driverLocation && (
           <Marker position={[driverLocation.lat, driverLocation.lng]} icon={driverIcon}>
             <Popup>
-              <strong>🛵 Conductor</strong><br />
-              {trip?.piaggioName} - {trip?.piaggioPlaca}<br />
-              <span style={{ fontSize: '11px', color: '#666' }}>
-                Última actualización hace segundos
-              </span>
+              <strong>🛵 Tu ubicación</strong><br />
+              {shipment.piaggioName} - {shipment.piaggioPlaca}
             </Popup>
           </Marker>
         )}
@@ -143,36 +146,51 @@ const mapCenter =
       {/* Panel inferior con información */}
       <div style={styles.panel}>
         <div style={styles.statusBadge}>
-          {tripStatus === 'accepted' && '✅ Conductor en camino'}
-          {tripStatus === 'in_progress' && '🚀 Viaje en curso'}
-          {tripStatus === 'completed' && '🏁 Viaje completado'}
+          {tripStatus === 'accepted' && '✅ En camino a la recogida'}
+          {tripStatus === 'in_progress' && '🚀 En viaje al destino'}
+          {tripStatus === 'delivered' && '🏁 Viaje completado'}
         </div>
+        
+        <div style={styles.cargoInfo}>📦 {shipment.cargoType} - {shipment.cargoWeight} kg</div>
         
         <div style={styles.info}>
           <div style={styles.infoRow}>
             <span>🛵 Conductor:</span>
-            <span>{trip?.driverName || 'Sin conductor'}</span>
+            <span>{shipment.driverName || 'Sin conductor'}</span>
           </div>
           <div style={styles.infoRow}>
-            <span>🔢 Placa:</span>
-           <span>{trip?.driverPhone || '---'}</span>
+            <span>📞 Contacto:</span>
+            <span>{shipment.driverPhone || '---'}</span>
           </div>
           <div style={styles.infoRow}>
             <span>💰 Precio:</span>
             <span style={styles.price}>
-              {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(trip?.estimatedPrice)}
+              {new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(shipment.estimatedPrice)}
             </span>
           </div>
         </div>
+
+        {/* Botones para conductor */}
+        {isConductor && tripStatus === 'accepted' && (
+          <button onClick={handleArrivedPickup} style={styles.pickupButton}>
+            📍 Llegué a recoger
+          </button>
+        )}
+
+        {isConductor && tripStatus === 'in_progress' && (
+          <button onClick={handleArrivedDelivery} style={styles.deliveryButton}>
+            🏁 Llegué a entregar
+          </button>
+        )}
 
         <div style={styles.actions}>
           <button onClick={() => navigate('/')} style={styles.backButton}>
             ← Volver al mapa
           </button>
           
-          {isCliente && tripStatus === 'completed' && (
+          {isCliente && tripStatus === 'delivered' && (
             <button 
-              onClick={() => navigate(`/rate-driver/${shipmentId}`)}
+              onClick={() => navigate(`/rate-driver/${shipmentIdFinal}`)}
               style={styles.rateButton}
             >
               ⭐ Calificar viaje
@@ -209,11 +227,17 @@ const styles = {
     textAlign: 'center',
     padding: '8px',
     borderRadius: '12px',
-    background: '#e8f5e9',
-    color: '#2e7d32',
+    background: '#e3f2fd',
+    color: '#1565c0',
     fontWeight: '600',
     fontSize: '14px',
     marginBottom: '12px'
+  },
+  cargoInfo: {
+    fontSize: '16px',
+    fontWeight: '600',
+    marginBottom: '8px',
+    textAlign: 'center'
   },
   info: {
     marginBottom: '16px'
@@ -254,6 +278,30 @@ const styles = {
     fontSize: '14px',
     fontWeight: '600',
     cursor: 'pointer'
+  },
+  pickupButton: {
+    width: '100%',
+    padding: '12px',
+    background: '#007bff',
+    color: 'white',
+    border: 'none',
+    borderRadius: '12px',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    marginBottom: '8px'
+  },
+  deliveryButton: {
+    width: '100%',
+    padding: '12px',
+    background: '#28a745',
+    color: 'white',
+    border: 'none',
+    borderRadius: '12px',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    marginBottom: '8px'
   },
   button: {
     padding: '12px 24px',

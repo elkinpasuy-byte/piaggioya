@@ -46,7 +46,7 @@ export const DriverTrips = () => {
   );
   
   if (result.success) {
-    navigate(`/driver/trip/${shipmentId}`);
+    navigate(`/track/${shipmentId}`);
   } else {
     alert('❌ Error: ' + result.error);
   }
