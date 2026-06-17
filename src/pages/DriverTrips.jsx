@@ -1,7 +1,4 @@
 // src/pages/DriverTrips.jsx
-// ==================== CONDUCTOR - LISTA DE ENVÍOS PENDIENTES ====================
-// Muestra envíos de carga (shipments) no aceptados
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -15,52 +12,44 @@ export const DriverTrips = () => {
   const [acceptingId, setAcceptingId] = useState(null);
   const [error, setError] = useState(null);
 
-  // Cargar envíos pendientes desde shipments
   useEffect(() => {
     loadShipments();
   }, []);
 
   const loadShipments = async () => {
-  setLoading(true);
+    setLoading(true);
+    const result = await getPendingShipments();
+    if (result.success) {
+      setPendingShipments(result.data);
+      setError(null);
+    } else {
+      setError(result.error);
+    }
+    setLoading(false);
+  };
 
-  const result = await getPendingShipments();
+  const handleAcceptShipment = async (shipmentId) => {
+    setAcceptingId(shipmentId);
+    const result = await acceptShipment(
+      shipmentId,
+      userData?.email,
+      userData?.nombre,
+      userData?.telefono
+    );
+    
+    if (result.success) {
+      navigate(`/track/${shipmentId}`);
+    } else {
+      alert('❌ Error: ' + result.error);
+    }
+    setAcceptingId(null);
+  };
 
-  if (result.success) {
-    setPendingShipments(result.data);
-    setError(null);
-  } else {
-    setError(result.error);
-  }
-
-  setLoading(false);
-};
-
-  // Aceptar un envío
- const handleAcceptShipment = async (shipmentId) => {
-  setAcceptingId(shipmentId);
-  const result = await acceptShipment(
-    shipmentId,
-    userData?.email,
-    userData?.nombre,
-    userData?.telefono
-  );
-  
-  if (result.success) {
-    navigate(`/track/${shipmentId}`);
-  } else {
-    alert('❌ Error: ' + result.error);
-  }
-  setAcceptingId(null);
-};
-
-  
-
-  // Formatear precio (puedes ajustar la fórmula según tu negocio)
   const calculatePrice = (weight, distance) => {
     const basePrice = 5000;
     const pricePerKg = 200;
     const pricePerKm = 800;
-    const estimatedDistance = distance || 5; // Temporal, luego con geocodificación
+    const estimatedDistance = distance || 5;
     return basePrice + (weight * pricePerKg) + (estimatedDistance * pricePerKm);
   };
 
@@ -72,7 +61,6 @@ export const DriverTrips = () => {
     }).format(price);
   };
 
-  // Verificar si es conductor
   if (!userData || (userData.role !== 'conductor' && userData.role !== 'conductor_pendiente')) {
     return (
       <div style={styles.container}>
@@ -87,7 +75,6 @@ export const DriverTrips = () => {
     );
   }
 
-  // Si el conductor está pendiente de verificación
   if (userData.role === 'conductor_pendiente') {
     return (
       <div style={styles.container}>
@@ -105,7 +92,6 @@ export const DriverTrips = () => {
 
   return (
     <div style={styles.container}>
-      {/* Header */}
       <div style={styles.header}>
         <button onClick={() => navigate('/')} style={styles.backButton}>
           ← Volver al mapa
@@ -137,7 +123,6 @@ export const DriverTrips = () => {
             const estimatedPrice = calculatePrice(shipment.cargoWeight, 5);
             return (
               <div key={shipment.id} style={styles.card}>
-                {/* Cabecera */}
                 <div style={styles.cardHeader}>
                   <span style={styles.tripId}>#{shipment.id.slice(-6)}</span>
                   <span style={styles.badge}>🕐 Pendiente</span>
@@ -148,14 +133,12 @@ export const DriverTrips = () => {
                   </span>
                 </div>
                 
-                {/* Información de la carga */}
                 <div style={styles.cargoInfo}>
                   <div style={styles.cargoType}>
                     📦 {shipment.cargoType || 'Carga general'} • {shipment.cargoWeight} kg
                   </div>
                 </div>
                 
-                {/* Direcciones */}
                 <div style={styles.addresses}>
                   <div style={styles.addressRow}>
                     <span style={styles.addressIcon}>📍</span>
@@ -167,7 +150,6 @@ export const DriverTrips = () => {
                   </div>
                 </div>
                 
-                {/* Cliente y precio */}
                 <div style={styles.details}>
                   <div style={styles.detailRow}>
                     <span>👤 Cliente:</span>
@@ -179,15 +161,14 @@ export const DriverTrips = () => {
                   </div>
                 </div>
                 
-                {/* Botón aceptar */}
-                <button
-                  onClick={() => handleAcceptShipment(shipment.id)}
-                  disabled={acceptingId === shipment.id}
-                  style={styles.acceptButton}
-                >
-                  {acceptingId === shipment.id ? 'Aceptando...' : '✅ Aceptar envío'}
-                </button>
-              </div>
+               <button
+  onClick={() => handleAcceptShipment(shipment.id)}
+  disabled={acceptingId === shipment.id}
+  style={styles.acceptButton}
+>
+  {acceptingId === shipment.id ? 'Aceptando...' : '✅ Aceptar envío'}
+</button>
+        </div>
             );
           })}
         </div>
@@ -372,5 +353,5 @@ const styles = {
     fontWeight: '600',
     cursor: 'pointer',
     transition: 'transform 0.2s'
-  },
+  }
 };

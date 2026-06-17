@@ -8,7 +8,7 @@ import { getShipmentById, updateShipmentStatus } from '../services/shipmentServi
 import { useGeolocation } from '../hooks/useGeolocation';
 import 'leaflet/dist/leaflet.css';
 
-// Icono para el conductor
+// Iconos
 const driverIcon = L.icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
@@ -18,9 +18,17 @@ const driverIcon = L.icon({
   shadowSize: [41, 41]
 });
 
-// Icono para el cliente
 const clientIcon = L.icon({
   iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+const deliveryIcon = L.icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
   iconSize: [25, 41],
   iconAnchor: [12, 41],
@@ -33,17 +41,20 @@ export const TripTracking = () => {
   const shipmentIdFinal = id || shipmentId;
   const navigate = useNavigate();
   const { userData } = useAuth();
-  const { location: driverLocation } = useGeolocation(); // Ubicación real del conductor
+  const { location: driverLocation } = useGeolocation();
   const [shipment, setShipment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [tripStatus, setTripStatus] = useState('');
 
-  // Cargar información del envío
   useEffect(() => {
     const loadShipment = async () => {
-      const result = await getShipmentById(shipmentIdFinal);
-      console.log('ENVIO FIREBASE:', result);
+    const result = await getShipmentById(shipmentIdFinal);
+
+      console.log('DATOS FIREBASE', result.data);
+      console.log('STATUS FIREBASE', result.data?.status);
+
+      
       if (result.success) {
         setShipment(result.data);
         setTripStatus(result.data.status);
@@ -55,18 +66,30 @@ export const TripTracking = () => {
     loadShipment();
   }, [shipmentIdFinal]);
 
-  // Handlers para el conductor
+  // ✅ ÚNICA DEFINICIÓN DE LAS FUNCIONES (dentro del componente)
   const handleArrivedPickup = async () => {
-    await updateShipmentStatus(shipmentIdFinal, 'in_progress');
-    setTripStatus('in_progress');
-    alert('✅ Carga completada. Ahora dirígete al destino.');
+    console.log('🔍 Intentando actualizar a in_progress');
+    console.log('📦 shipmentIdFinal:', shipmentIdFinal);
+  const result = await updateShipmentStatus(shipmentIdFinal, 'in_progress');
+  console.log('📊 Resultado:', result);
+    
+    if (result.success) {
+      setTripStatus('in_progress');
+      alert('✅ Carga recogida. ¡A entregar!');
+    } else {
+      alert('❌ Error: ' + result.error);
+    }
   };
 
   const handleArrivedDelivery = async () => {
-    await updateShipmentStatus(shipmentIdFinal, 'delivered');
-    setTripStatus('delivered');
-    alert('✅ Envío completado. Gracias por tu servicio.');
-    navigate('/driver/trips');
+    const result = await updateShipmentStatus(shipmentIdFinal, 'delivered');
+    if (result.success) {
+      setTripStatus('delivered');
+      alert('✅ Envío completado. ¡Gracias!');
+      navigate('/driver/trips');
+    } else {
+      alert('❌ Error: ' + result.error);
+    }
   };
 
   if (loading) {
@@ -92,7 +115,6 @@ export const TripTracking = () => {
   const isConductor = userData?.role === 'conductor';
   const isCliente = userData?.role === 'cliente';
 
-  // Centro del mapa
   const mapCenter = driverLocation?.lat && driverLocation?.lng
     ? [driverLocation.lat, driverLocation.lng]
     : shipment.pickupCoords?.lat && shipment.pickupCoords?.lng
@@ -101,7 +123,6 @@ export const TripTracking = () => {
 
   return (
     <div style={styles.container}>
-      {/* Mapa */}
       <MapContainer
         center={mapCenter}
         zoom={14}
@@ -112,7 +133,6 @@ export const TripTracking = () => {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {/* Marcador de recogida */}
         {shipment.pickupCoords && (
           <Marker position={[shipment.pickupCoords.lat, shipment.pickupCoords.lng]} icon={clientIcon}>
             <Popup>
@@ -122,7 +142,6 @@ export const TripTracking = () => {
           </Marker>
         )}
 
-        {/* Marcador de entrega */}
         {shipment.deliveryCoords && (
           <Marker position={[shipment.deliveryCoords.lat, shipment.deliveryCoords.lng]} icon={deliveryIcon}>
             <Popup>
@@ -132,7 +151,6 @@ export const TripTracking = () => {
           </Marker>
         )}
 
-        {/* Marcador del conductor (si está disponible) */}
         {driverLocation && (
           <Marker position={[driverLocation.lat, driverLocation.lng]} icon={driverIcon}>
             <Popup>
@@ -143,7 +161,6 @@ export const TripTracking = () => {
         )}
       </MapContainer>
 
-      {/* Panel inferior con información */}
       <div style={styles.panel}>
         <div style={styles.statusBadge}>
           {tripStatus === 'accepted' && '✅ En camino a la recogida'}
@@ -202,6 +219,7 @@ export const TripTracking = () => {
   );
 };
 
+// ✅ ESTILOS (CORRECTOS, SIN DUPLICAR)
 const styles = {
   container: {
     position: 'fixed',

@@ -21,6 +21,8 @@ const styles = {
   menuItem: { width: '100%', padding: '12px 16px', border: 'none', background: 'white', textAlign: 'left', cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid #eee' }
 };
 
+
+
 // ==================== HOME CLIENTE ====================
 const ClientHome = () => {
   const { location, loading, error } = useGeolocation();
@@ -28,6 +30,7 @@ const ClientHome = () => {
   const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
 
+  
   if (loading) return <div>Cargando...</div>;
   if (error) return <div>Error: {error}</div>;
 
@@ -57,6 +60,8 @@ const DriverHome = () => {
   const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
 
+  
+
   if (loading) return <div>Cargando...</div>;
   if (error) return <div>Error: {error}</div>;
 
@@ -78,6 +83,9 @@ const DriverHome = () => {
     </div>
   );
 };
+
+
+
 
 // ==================== PROTECTED ROUTE ====================
 const ProtectedRoute = ({ children }) => {
@@ -117,5 +125,7 @@ function App() {
     </AuthProvider>
   );
 }
+
+
 
 export default App;
