@@ -129,10 +129,10 @@ if (!userLocation) {
   return (
     <>
       <MapContainer
-        center={[userLocation.lat, userLocation.lng]}
-        zoom={14}
-        style={{ height: '100vh', width: '100vw' }}
-      >
+  center={[userLocation.lat, userLocation.lng]}
+  zoom={14}
+  className="piaggio-map"
+>
         <TileLayer
           attribution="&copy; OpenStreetMap"
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

@@ -100,6 +100,8 @@ export const DriverHome = () => {
       </button>
     </div>
   );
+  
+  
 
   // ========== RENDER PRINCIPAL ==========
   return (
@@ -126,16 +128,13 @@ export const DriverHome = () => {
         </div>
       </header>
 
- {/* MAPA */}
+{/* MAPA */}
         <div style={styles.mapCard}>
           <PiaggioMap userLocation={location} />
         </div>
 
       {/* CONTENIDO */}
       <main style={styles.mainContent}>
-
-       
-
         <div style={styles.statsGrid}>
           <div style={styles.statCard}>
             <h2>{stats.total}</h2>
@@ -326,6 +325,8 @@ const styles = {
 
   // MAPA
   mapCard: {
+    position:'relative',
+    zIndex:1,
     height: '350px',
     borderRadius: '1px solid',
     overflow: 'hidden',

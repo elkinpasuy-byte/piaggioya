@@ -25,6 +25,7 @@ html, body, #root {
   background: #f0f0f0;
 }
 
+
 .leaflet-control-attribution {
   font-size: 9px;
   background: rgba(255, 255, 255, 0.8);

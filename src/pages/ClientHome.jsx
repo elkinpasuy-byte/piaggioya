@@ -405,7 +405,7 @@ activeDetails: {
   },
 
   // MAPA
- mapCard:{
+  mapCard:{
   position:'relative',
   zIndex:1,
   height:'400px',
