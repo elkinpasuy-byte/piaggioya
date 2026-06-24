@@ -60,7 +60,7 @@ export const DriverHistory = () => {
     const statusMap = {
       'accepted': '✅ Aceptado',
       'in_progress': '🚀 En viaje',
-      'completed': '🏁 Completado',
+      'delivered': '🏁 Completado',
       'cancelled': '❌ Cancelado',
       'pending': '🕐 Pendiente'
     };
@@ -73,7 +73,7 @@ export const DriverHistory = () => {
       'pending': '#ffc107',
       'accepted': '#17a2b8',
       'in_progress': '#007bff',
-      'completed': '#28a745',
+      'delivered': '#28a745',
       'cancelled': '#dc3545'
     };
     return colorMap[status] || '#6c757d';
@@ -145,10 +145,10 @@ export const DriverHistory = () => {
           En viaje ({trips.filter(t => t.status === 'in_progress').length})
         </button>
         <button
-          onClick={() => setFilter('completed')}
-          style={{ ...styles.filterButton, ...(filter === 'completed' ? styles.filterActive : {}) }}
+          onClick={() => setFilter('delivered')}
+          style={{ ...styles.filterButton, ...(filter === 'delivered' ? styles.filterActive : {}) }}
         >
-          Completados ({trips.filter(t => t.status === 'completed').length})
+          Completados ({trips.filter(t => t.status === 'delivered').length})
         </button>
       </div>
 

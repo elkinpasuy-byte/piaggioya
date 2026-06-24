@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { getClientShipments, updateShipmentStatus, rateShipment } from '../services/shipmentService';
+import { getClientShipments, updateShipmentStatus, rateShipment, updateDriverAverageRating, getShipmentById } from '../services/shipmentService';
 import { useNavigate } from 'react-router-dom';
 
 export const ClientTrips = () => {
@@ -147,7 +147,7 @@ export const ClientTrips = () => {
               </div>
 
               <div style={styles.driverInfo}>
-                {shipment.driverName ? `🛵 Conductor: ${shipment.driverName}` : '⏳ Buscando conductor...'}
+                {shipment.driverName ? `🚚 Conductor: ${shipment.driverName}` : '⏳ Buscando conductor...'}
               </div>
 
               <div style={styles.actions}>

@@ -81,7 +81,7 @@ export const ConfirmTripModal = ({ isOpen, onClose, onConfirm, tripDetails, isCo
             gap: '12px',
             marginBottom: '12px'
           }}>
-            <span style={{ fontSize: '32px' }}>🛵</span>
+            <span style={{ fontSize: '32px' }}>🚚</span>
             <div>
               <div style={{ fontWeight: '600', fontSize: '16px' }}>
                 {tripDetails?.piaggioName}

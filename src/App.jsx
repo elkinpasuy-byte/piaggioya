@@ -11,6 +11,13 @@ import { ClientTrips } from './pages/ClientTrips';
 import { DriverTrips } from './pages/DriverTrips';
 import { DriverHistory } from './pages/DriverHistory';
 import { TripTracking } from './pages/TripTracking';
+import { DriverHome } from './pages/DriverHome';
+import { ClientHome as NewClientHome } from './pages/ClientHome';
+import { ClientHome } from './pages/ClientHome';
+
+
+
+
 
 // ==================== ESTILOS ====================
 const styles = {
@@ -24,7 +31,7 @@ const styles = {
 
 
 // ==================== HOME CLIENTE ====================
-const ClientHome = () => {
+const ClientHomeold = () => {
   const { location, loading, error } = useGeolocation();
   const { logout, user } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
@@ -35,7 +42,7 @@ const ClientHome = () => {
   if (error) return <div>Error: {error}</div>;
 
   return (
-    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}>
+    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', position:'relative' }}>
       <PiaggioMap userLocation={location} />
       <button onClick={() => setShowMenu(!showMenu)} style={styles.menuButton}><User size={20} color="#333" /></button>
       {showMenu && (
@@ -53,38 +60,6 @@ const ClientHome = () => {
   );
 };
 
-// ==================== HOME CONDUCTOR ====================
-const DriverHome = () => {
-  const { location, loading, error } = useGeolocation();
-  const { logout, user } = useAuth();
-  const [showMenu, setShowMenu] = useState(false);
-  const navigate = useNavigate();
-
-  
-
-  if (loading) return <div>Cargando...</div>;
-  if (error) return <div>Error: {error}</div>;
-
-  return (
-    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}>
-      <PiaggioMap userLocation={location} />
-      <button onClick={() => setShowMenu(!showMenu)} style={styles.menuButton}><User size={20} color="#333" /></button>
-      {showMenu && (
-        <>
-          <div style={styles.overlay} onClick={() => setShowMenu(false)} />
-          <div style={styles.menu}>
-            <div style={styles.userInfo}>Conectado como<br/><strong>{user?.email}</strong></div>
-            <button onClick={() => { navigate('/driver/trips'); setShowMenu(false); }} style={styles.menuItem}>📦 Envíos disponibles</button>
-            <button onClick={() => { navigate('/driver/history'); setShowMenu(false); }} style={styles.menuItem}>📋 Mi historial</button>
-            <button onClick={async () => { await logout(); navigate('/login'); }} style={{ ...styles.menuItem, color: '#dc3545' }}>🚪 Cerrar sesión</button>
-          </div>
-        </>
-      )}
-    </div>
-  );
-};
-
-
 
 
 // ==================== PROTECTED ROUTE ====================
@@ -100,6 +75,7 @@ const ProtectedRoute = ({ children }) => {
   if (isConductor) return children || <DriverHome />;
   return children || <ClientHome />;
 };
+
 
 // ==================== APP ====================
 function App() {
@@ -120,6 +96,7 @@ function App() {
           <Route path="/driver/trip/:shipmentId" element={<ProtectedRoute><TripTracking /></ProtectedRoute>} />
           
           <Route path="/track/:id" element={<ProtectedRoute><TripTracking /></ProtectedRoute>} />
+          <Route path="/driver/dashboard" element={<ProtectedRoute><DriverHome /></ProtectedRoute>} />
         </Routes>
       </Router>
     </AuthProvider>

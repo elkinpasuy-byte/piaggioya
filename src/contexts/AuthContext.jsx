@@ -5,7 +5,7 @@ import {
   signOut, 
   onAuthStateChanged 
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
 const AuthContext = createContext();
@@ -51,12 +51,13 @@ export const AuthProvider = ({ children }) => {
       const user = userCredential.user;
       
       await setDoc(doc(db, 'users', user.uid), {
-        nombre,
-        email,
-        telefono,
-        role,
-        createdAt: new Date().toISOString()
-      });
+  nombre,
+  email,
+  telefono,
+  role,
+  isOnline: false,
+  createdAt: new Date().toISOString()
+});
       
       return {
       success: true,
@@ -68,22 +69,45 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (email, password) => {
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  };
+  try {
+    const userCredential = await signInWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
 
-  const logout = async () => {
-    try {
-      await signOut(auth);
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
+    await updateDoc(
+      doc(db, 'users', userCredential.user.uid),
+      {
+        isOnline: true
+      }
+    );
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+ const logout = async () => {
+  try {
+
+    if (user) {
+      await updateDoc(
+        doc(db, 'users', user.uid),
+        {
+          isOnline: false
+        }
+      );
     }
-  };
+
+    await signOut(auth);
+
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
 
   const value = {
     user,

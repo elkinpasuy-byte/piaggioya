@@ -211,3 +211,83 @@ export const updateDriverAverageRating = async (driverEmail) => {
     return { success: false, error: error.message };
   }
 };
+
+// ==================== NIVEL DEL CONDUCTOR ====================
+
+/**
+ * Obtener el nivel de un conductor basado en su promedio
+ * @param {number} average - Promedio de calificación (0-5)
+ * @returns {object} { label, emoji, color }
+ */
+export const getDriverAverageRating = async (driverEmail) => {
+  try {
+    const q = query(
+      collection(db, 'shipments'),
+      where('driverId', '==', driverEmail),
+      where('rating.stars', '!=', null)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    let totalStars = 0;
+    let totalRatings = 0;
+    
+    querySnapshot.forEach((doc) => {
+      const stars = doc.data().rating?.stars;
+      if (stars) {
+        totalStars += stars;
+        totalRatings++;
+      }
+    });
+    
+    const average = totalRatings > 0 ? totalStars / totalRatings : 0;
+    
+    return {
+      success: true,
+      average: Math.round(average * 10) / 10,
+      total: totalRatings
+    };
+  } catch (error) {
+    console.error('Error obteniendo promedio:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getDriverLevel = (average) => {
+  if (average >= 4.5) {
+    return { label: 'Conductor Destacado', emoji: '🏆', color: '#4CAF50' };
+  } else if (average >= 4.0) {
+    return { label: 'Conductor Confiable', emoji: '✅', color: '#8BC34A' };
+  } else if (average >= 3.0) {
+    return { label: 'Conductor Regular', emoji: '⚠️', color: '#FF9800' };
+  } else {
+    return { label: 'Conductor en Evaluación', emoji: '🔍', color: '#F44336' };
+  }
+};
+
+// Actualizar ubicación del conductor
+export const updateDriverLocation = async (
+  shipmentId,
+  latitude,
+  longitude
+) => {
+  try {
+    const docRef = doc(db, COLLECTION_NAME, shipmentId);
+
+    await updateDoc(docRef, {
+      driverLocation: {
+        lat: latitude,
+        lng: longitude
+      },
+      updatedAt: Timestamp.now()
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error actualizando ubicación:', error);
+
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};

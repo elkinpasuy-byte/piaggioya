@@ -8,12 +8,14 @@ import { useLocation } from 'react-router-dom';
 // COMPONENTES
 import { LocationMarker } from './LocationMarker';
 import { PiaggioMarkers } from './PiaggioMarkers';
-import { PiaggioPanel } from '../PiaggioPanel/PiaggioPanel';
+//import { PiaggioPanel } from '../PiaggioPanel/PiaggioPanel';
 import { ConfirmTripModal } from '../modals/ConfirmTripModal';
 import { MapController } from './MapController'; // ⚠️ asegúrate que exista
 
 // HOOKS
-import { useRealTimePiaggios } from '../../hooks/useRealTimePiaggios';
+
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../../firebase';
 import { useLocalStorage } from '../../hooks/useLocalStorage';
 import { useRoute } from '../../hooks/useRoute';
 import { useAuth } from '../../contexts/AuthContext';
@@ -37,7 +39,9 @@ export const PiaggioMap = ({ userLocation, onMapReady }) => {
   const mapRef = useRef(null);
   const location = useLocation();
 
-  const { piaggios, lastUpdate } = useRealTimePiaggios(userLocation, 4000);
+  const [conductores, setConductores] = useState([]);
+  const [lastUpdate, setLastUpdate] = useState(Date.now());
+
   const [favoriteId, setFavoriteId] = useLocalStorage('piaggiaya_favorite', null);
 
  
@@ -59,23 +63,22 @@ export const PiaggioMap = ({ userLocation, onMapReady }) => {
 
   // ===== LOAD SHIPMENT (arreglado) =====
   useEffect(() => {
-  const loadShipment = async () => {
-    const shipmentId = location.state?.shipmentId;
-    if (!shipmentId) return;
-
-    const result = await getShipmentById(shipmentId);
-
-    if (result.success && result.data?.pickupCoords && result.data?.deliveryCoords) {
-      // ✅ CORREGIDO: pasar en el formato que espera calculateRoute
-      calculateRoute(
-        { lat: result.data.pickupCoords.lat, lng: result.data.pickupCoords.lng },
-        [result.data.deliveryCoords.lat, result.data.deliveryCoords.lng]
-      );
+  const loadConductores = async () => {
+    try {
+      const q = query(collection(db, 'users'),where('role', '==', 'conductor'),where('isOnline', '==', true));
+      const snapshot = await getDocs(q);
+      const list = [];
+      snapshot.forEach((doc) => {
+        list.push({ id: doc.id, ...doc.data() });
+      });
+      setConductores(list);
+      setLastUpdate(Date.now());
+    } catch (error) {
+      console.error('Error cargando conductores:', error);
     }
   };
-
-  loadShipment();
-}, [location.state, calculateRoute]);
+  loadConductores();
+}, []);
 
   // ===== DISTANCIA =====
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -138,7 +141,7 @@ if (!userLocation) {
         <LocationMarker position={userLocation} />
 
         <PiaggioMarkers
-        piaggios={piaggios}
+        conductores={conductores}
         userLocation={userLocation}
         onPiaggioClick={handlePiaggioSelect}
         //onToggleFavorite={handleToggleFavorite}
@@ -151,12 +154,8 @@ if (!userLocation) {
         <MapController onMapReady={handleMapReady} />
       </MapContainer>
 
-      <PiaggioPanel
-      piaggios={piaggios}
-      userLocation={userLocation}
-      lastUpdate={lastUpdate}
-      onSelectPiaggio={handlePiaggioSelect}
-    />
+  {/* Solo mostrar el panel de Piaggios si es cliente */}
+
 
       {/* MODAL */}
       <ConfirmTripModal

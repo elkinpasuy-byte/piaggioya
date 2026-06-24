@@ -41,7 +41,7 @@ export const TripStatus = ({ userEmail }) => {
       zIndex: 1000
     }}>
       <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-        🛵 Estado de tu viaje
+        🚚 Estado de tu viaje
       </div>
       <div style={{ fontSize: '13px', color: '#666' }}>
         {activeTrip.status === 'pending' && '🕐 Buscando conductor...'}

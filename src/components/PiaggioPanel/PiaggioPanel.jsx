@@ -87,7 +87,7 @@ const CALIFICACION_OPCIONES = [
   const piaggiosWithDistance = useMemo(() => {
     if (!userLocation) return piaggios;
     
-    return piaggios
+    return (piaggios || [])
       .map(piaggio => {
         const distance = calculateDistance(
           userLocation.lat,
@@ -194,7 +194,7 @@ const CALIFICACION_OPCIONES = [
   return (
     <div className={`piaggio-panel ${isOpen ? 'open' : 'closed'}`}>
       <div className="panel-header" onClick={() => setIsOpen(!isOpen)}>
-        <h3>🛵 Piaggios Cercanos</h3>
+        <h3>🚚 Piaggios Cercanos</h3>
         <button className="toggle-btn">{isOpen ? '▼' : '▲'}</button>
       </div>
       

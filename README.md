@@ -1,4 +1,4 @@
-# 🛵 PiaggioYa - Plataforma de Logística de Carga
+# 🚚 PiaggioYa - Plataforma de Logística de Carga
 
 Plataforma de logística de carga liviana tipo Uber, diseñada para conectar clientes con conductores de vehículos Piaggio (Chana y similares) en Pasto y sus alrededores.
 

@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { useAuth } from '../contexts/AuthContext';
-import { getShipmentById, updateShipmentStatus } from '../services/shipmentService';
+import { getShipmentById, updateShipmentStatus, updateDriverLocation } from '../services/shipmentService';
 import { useGeolocation } from '../hooks/useGeolocation';
 import 'leaflet/dist/leaflet.css';
 
@@ -42,19 +42,20 @@ export const TripTracking = () => {
   const navigate = useNavigate();
   const { userData } = useAuth();
   const { location: driverLocation } = useGeolocation();
+  
+  // ===== DECLARAR ROLES =====
+  const isConductor = userData?.role === 'conductor';
+  const isCliente = userData?.role === 'cliente';
+  
   const [shipment, setShipment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [tripStatus, setTripStatus] = useState('');
 
+  // Cargar información del envío
   useEffect(() => {
     const loadShipment = async () => {
-    const result = await getShipmentById(shipmentIdFinal);
-
-      console.log('DATOS FIREBASE', result.data);
-      console.log('STATUS FIREBASE', result.data?.status);
-
-      
+      const result = await getShipmentById(shipmentIdFinal);
       if (result.success) {
         setShipment(result.data);
         setTripStatus(result.data.status);
@@ -66,13 +67,39 @@ export const TripTracking = () => {
     loadShipment();
   }, [shipmentIdFinal]);
 
-  // ✅ ÚNICA DEFINICIÓN DE LAS FUNCIONES (dentro del componente)
+  // ===== COMPARTIR UBICACIÓN EN TIEMPO REAL (CONDUCTOR) =====
+  useEffect(() => {
+    let watchId = null;
+
+    if (isConductor && (tripStatus === 'accepted' || tripStatus === 'in_progress')) {
+      if (navigator.geolocation) {
+        watchId = navigator.geolocation.watchPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords;
+            await updateDriverLocation(shipmentIdFinal, latitude, longitude);
+          },
+          (error) => {
+            console.error('Error de geolocalización:', error);
+          },
+          {
+            enableHighAccuracy: true,
+            maximumAge: 5000,
+            timeout: 10000
+          }
+        );
+      }
+    }
+
+    return () => {
+      if (watchId) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
+  }, [isConductor, tripStatus, shipmentIdFinal]);
+
+  // ===== HANDLERS PARA CONDUCTOR =====
   const handleArrivedPickup = async () => {
-    console.log('🔍 Intentando actualizar a in_progress');
-    console.log('📦 shipmentIdFinal:', shipmentIdFinal);
-  const result = await updateShipmentStatus(shipmentIdFinal, 'in_progress');
-  console.log('📊 Resultado:', result);
-    
+    const result = await updateShipmentStatus(shipmentIdFinal, 'in_progress');
     if (result.success) {
       setTripStatus('in_progress');
       alert('✅ Carga recogida. ¡A entregar!');
@@ -112,9 +139,7 @@ export const TripTracking = () => {
     return <div style={styles.container}>Envío no encontrado</div>;
   }
 
-  const isConductor = userData?.role === 'conductor';
-  const isCliente = userData?.role === 'cliente';
-
+  // Centro del mapa
   const mapCenter = driverLocation?.lat && driverLocation?.lng
     ? [driverLocation.lat, driverLocation.lng]
     : shipment.pickupCoords?.lat && shipment.pickupCoords?.lng
@@ -154,7 +179,7 @@ export const TripTracking = () => {
         {driverLocation && (
           <Marker position={[driverLocation.lat, driverLocation.lng]} icon={driverIcon}>
             <Popup>
-              <strong>🛵 Tu ubicación</strong><br />
+              <strong>🚚 Tu ubicación</strong><br />
               {shipment.piaggioName} - {shipment.piaggioPlaca}
             </Popup>
           </Marker>
@@ -172,7 +197,7 @@ export const TripTracking = () => {
         
         <div style={styles.info}>
           <div style={styles.infoRow}>
-            <span>🛵 Conductor:</span>
+            <span>🚚 Conductor:</span>
             <span>{shipment.driverName || 'Sin conductor'}</span>
           </div>
           <div style={styles.infoRow}>
@@ -219,7 +244,6 @@ export const TripTracking = () => {
   );
 };
 
-// ✅ ESTILOS (CORRECTOS, SIN DUPLICAR)
 const styles = {
   container: {
     position: 'fixed',

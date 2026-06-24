@@ -44,7 +44,7 @@ export const PiaggioPopup = ({ piaggio, onSelect, onToggleFavorite, isFavorite, 
   return (
     <div className="piaggio-popup-container">
       <div className="popup-header">
-        <span className="popup-icon">🛵</span>
+        <span className="popup-icon">🚚</span>
         <h3 className="popup-title">{piaggio.nombre}</h3>
         <button 
           className={`popup-favorite-btn ${isFavorite ? 'active' : ''}`}
