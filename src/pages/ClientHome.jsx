@@ -71,29 +71,30 @@ export const ClientHome = () => {
         </button>
       </div>
       <nav style={styles.sidebarNav}>
-        <button onClick={() => { toggleSidebar(); }} style={styles.sidebarItemActive}>
+
+        <button className="sidebar-btn" onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
           <Home size={20} /> Inicio
         </button>
-        <button onClick={() => { navigate('/client/request'); toggleSidebar(); }} style={styles.sidebarItem}>
+        <button className="sidebar-btn" onClick={() => { navigate('/client/request'); toggleSidebar(); }} style={styles.sidebarItem}>
           <Package size={20} /> Solicitar envío
         </button>
-        <button onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
+        <button className="sidebar-btn" onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
           <MapPin size={20} /> Mi envío
         </button>
-        <button onClick={() => { navigate('/client/trips'); toggleSidebar(); }} style={styles.sidebarItem}>
+        <button className="sidebar-btn" onClick={() => { navigate('/client/trips'); toggleSidebar(); }} style={styles.sidebarItem}>
           <History size={20} /> Historial
         </button>
-        <button onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
+        <button className="sidebar-btn" onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
           <Star size={20} /> Calificaciones
         </button>
-        <button onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
+        <button className="sidebar-btn" onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
           <User size={20} /> Perfil
         </button>
-        <button onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
+        <button className="sidebar-btn" onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
           <HelpCircle size={20} /> Ayuda
         </button>
       </nav>
-      <button onClick={handleLogout} style={styles.sidebarLogout}>
+      <button className="sidebar-btn" onClick={handleLogout} style={styles.sidebarLogout}>
         🚪 Cerrar sesión
       </button>
     </div>

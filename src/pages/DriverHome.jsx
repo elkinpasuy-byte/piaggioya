@@ -66,28 +66,28 @@ export const DriverHome = () => {
         </button>
       </div>
       <nav style={styles.sidebarNav}>
-        <button onClick={() => { toggleSidebar(); }} style={styles.sidebarItemActive}>
+        <button  className="sidebar-btn" onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
           <Home size={20} /> Inicio
         </button>
-        <button onClick={() => { navigate('/driver/trips'); toggleSidebar(); }} style={styles.sidebarItem}>
-          <Package size={20} /> Disponibles <span style={styles.badge}>3</span>
+        <button  className="sidebar-btn"onClick={() => { navigate('/driver/trips'); toggleSidebar(); }} style={styles.sidebarItem}>
+          <Package size={20} /> Disponibles
         </button>
-        <button onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
+        <button  className="sidebar-btn" onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
           <MapPin size={20} /> Mis viajes
         </button>
-        <button onClick={() => { navigate('/driver/history'); toggleSidebar(); }} style={styles.sidebarItem}>
+        <button  className="sidebar-btn" onClick={() => { navigate('/driver/history'); toggleSidebar(); }} style={styles.sidebarItem}>
           <History size={20} /> Historial
         </button>
-        <button onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
+        <button  className="sidebar-btn" onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
           <Star size={20} /> Calificaciones
         </button>
-        <button onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
+        <button  className="sidebar-btn" onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
           <DollarSign size={20} /> Ganancias
         </button>
-        <button onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
+        <button  className="sidebar-btn" onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
           <User size={20} /> Perfil
         </button>
-        <button onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
+        <button  className="sidebar-btn" onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
           <HelpCircle size={20} /> Ayuda
         </button>
       </nav>
@@ -95,7 +95,7 @@ export const DriverHome = () => {
         Modo conductor
         <input type="checkbox" defaultChecked style={styles.toggleInput} />
       </div>
-      <button onClick={handleLogout} style={styles.sidebarLogout}>
+      <button className="sidebar-btn" onClick={handleLogout} style={styles.sidebarLogout}>
         🚪 Cerrar sesión
       </button>
     </div>
@@ -200,6 +200,7 @@ export const DriverHome = () => {
           </div>
         )}
       </main>
+      
       
       <footer style={styles.footer}>
           🚚 PiaggioYa • Tu aliado en cada entrega

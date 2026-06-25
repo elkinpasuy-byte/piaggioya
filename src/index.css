@@ -141,3 +141,13 @@ code {
 .leaflet-container {
   z-index: 1;
 }
+
+.sidebar-btn {
+  transition: all 0.2s ease;
+}
+
+.sidebar-btn:hover {
+  background: #f0f4ff !important;
+  color: #667eea !important;
+  transform: translateX(6px);
+}
