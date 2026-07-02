@@ -72,25 +72,25 @@ export const ClientHome = () => {
       </div>
       <nav style={styles.sidebarNav}>
 
-        <button className="sidebar-btn" onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
+        <button className="sidebar-btn" onClick={() => { navigate('/'); toggleSidebar(); }} style={styles.sidebarItem}>
           <Home size={20} /> Inicio
         </button>
         <button className="sidebar-btn" onClick={() => { navigate('/client/request'); toggleSidebar(); }} style={styles.sidebarItem}>
           <Package size={20} /> Solicitar envío
         </button>
-        <button className="sidebar-btn" onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
+        <button className="sidebar-btn" onClick={() => { navigate('/client/track');toggleSidebar(); }} style={styles.sidebarItem}>
           <MapPin size={20} /> Mi envío
         </button>
         <button className="sidebar-btn" onClick={() => { navigate('/client/trips'); toggleSidebar(); }} style={styles.sidebarItem}>
           <History size={20} /> Historial
         </button>
-        <button className="sidebar-btn" onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
+        <button className="sidebar-btn" onClick={() => { navigate('/client/ratings');toggleSidebar(); }} style={styles.sidebarItem}>
           <Star size={20} /> Calificaciones
         </button>
-        <button className="sidebar-btn" onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
+        <button className="sidebar-btn" onClick={() => {navigate('/client/profile'); toggleSidebar(); }} style={styles.sidebarItem}>
           <User size={20} /> Perfil
         </button>
-        <button className="sidebar-btn" onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
+        <button className="sidebar-btn" onClick={() => { navigate('/client/help');toggleSidebar(); }} style={styles.sidebarItem}>
           <HelpCircle size={20} /> Ayuda
         </button>
       </nav>
@@ -521,22 +521,25 @@ historyItem: {
     gap: '4px',
   },
   sidebarItem: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '14px',
-    padding: '10px 20px',
-    border: 'none',
-    background: 'transparent',
-    color: '#555',
-    fontSize: '14px',
-    fontWeight: '500',
-    cursor: 'pointer',
-    textAlign: 'left',
-    width: '100%',
-    borderRadius: '8px',
-    margin: '0 8px',
-    transition: 'all 0.2s',
-  },
+  display: 'flex',
+  alignItems: 'center',
+  gap: '14px',
+  padding: '10px 20px',
+  border: 'none',
+  background: 'transparent',
+  color: '#555',
+  fontSize: '14px',
+  fontWeight: '500',
+  cursor: 'pointer',
+  textAlign: 'left',
+
+  width: 'calc(100% - 16px)',
+  margin: '0 8px',
+  boxSizing: 'border-box',
+
+  borderRadius: '8px',
+  transition: 'all 0.2s',
+},
   sidebarItemActive: {
     display: 'flex',
     alignItems: 'center',

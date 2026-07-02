@@ -12,10 +12,20 @@ import { DriverTrips } from './pages/DriverTrips';
 import { DriverHistory } from './pages/DriverHistory';
 import { TripTracking } from './pages/TripTracking';
 import { DriverHome } from './pages/DriverHome';
-import { ClientHome as NewClientHome } from './pages/ClientHome';
+
 import { ClientHome } from './pages/ClientHome';
+  
+// Cliente
+import ClientTrack from './pages/client/ClientTrack';
+import ClientRatings from './pages/client/ClientRatings';
+import ClientProfile from './pages/client/ClientProfile';
+import ClientHelp from './pages/client/ClientHelp';
 
-
+// Conductor
+import DriverRatings from './pages/driver/DriverRatings';
+import DriverEarnings from './pages/driver/DriverEarnings';
+import DriverProfile from './pages/driver/DriverProfile';
+import DriverHelp from './pages/driver/DriverHelp';
 
 
 
@@ -97,6 +107,17 @@ function App() {
           
           <Route path="/track/:id" element={<ProtectedRoute><TripTracking /></ProtectedRoute>} />
           <Route path="/driver/dashboard" element={<ProtectedRoute><DriverHome /></ProtectedRoute>} />
+
+          <Route path="/client/track" element={<ProtectedRoute><ClientTrack /></ProtectedRoute>} />
+          <Route path="/client/ratings" element={<ProtectedRoute><ClientRatings /></ProtectedRoute>} />
+          <Route path="/client/profile" element={<ProtectedRoute><ClientProfile /></ProtectedRoute>} />
+          <Route path="/client/help" element={<ProtectedRoute><ClientHelp /></ProtectedRoute>} />
+
+          <Route path="/driver/ratings" element={<ProtectedRoute><DriverRatings /></ProtectedRoute>} />
+          <Route path="/driver/earnings" element={<ProtectedRoute><DriverEarnings /></ProtectedRoute>} />
+          <Route path="/driver/profile" element={<ProtectedRoute><DriverProfile /></ProtectedRoute>} />
+          <Route path="/driver/help" element={<ProtectedRoute><DriverHelp /></ProtectedRoute>} />     
+
         </Routes>
       </Router>
     </AuthProvider>

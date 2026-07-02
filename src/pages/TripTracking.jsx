@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getShipmentById, updateShipmentStatus, updateDriverLocation } from '../services/shipmentService';
 import { useGeolocation } from '../hooks/useGeolocation';
 import 'leaflet/dist/leaflet.css';
+import { getDistanceInMeters } from '../utils/distance';
 
 // Iconos
 const driverIcon = L.icon({
@@ -42,6 +43,9 @@ export const TripTracking = () => {
   const navigate = useNavigate();
   const { userData } = useAuth();
   const { location: driverLocation } = useGeolocation();
+
+
+
   
   // ===== DECLARAR ROLES =====
   const isConductor = userData?.role === 'conductor';
@@ -51,6 +55,9 @@ export const TripTracking = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [tripStatus, setTripStatus] = useState('');
+
+  const [isNearPickup, setIsNearPickup] = useState(false);
+  const [isNearDelivery, setIsNearDelivery] = useState(false);
 
   // Cargar información del envío
   useEffect(() => {
@@ -66,6 +73,8 @@ export const TripTracking = () => {
     };
     loadShipment();
   }, [shipmentIdFinal]);
+
+  
 
   // ===== COMPARTIR UBICACIÓN EN TIEMPO REAL (CONDUCTOR) =====
   useEffect(() => {
@@ -96,6 +105,34 @@ export const TripTracking = () => {
       }
     };
   }, [isConductor, tripStatus, shipmentIdFinal]);
+
+  // ===== CALCULAR DISTANCIA A RECOGIDA Y ENTREGA =====
+useEffect(() => {
+  if (!driverLocation || !shipment) return;
+
+  if (shipment.pickupCoords) {
+    const distPickup = getDistanceInMeters(
+      driverLocation.lat,
+      driverLocation.lng,
+      shipment.pickupCoords.lat,
+      shipment.pickupCoords.lng
+    );
+
+    setIsNearPickup(distPickup <= 10);
+  }
+
+  if (shipment.deliveryCoords) {
+    const distDelivery = getDistanceInMeters(
+      driverLocation.lat,
+      driverLocation.lng,
+      shipment.deliveryCoords.lat,
+      shipment.deliveryCoords.lng
+    );
+
+    setIsNearDelivery(distDelivery <= 30);
+  }
+
+}, [driverLocation, shipment]);
 
   // ===== HANDLERS PARA CONDUCTOR =====
   const handleArrivedPickup = async () => {
@@ -214,16 +251,32 @@ export const TripTracking = () => {
 
         {/* Botones para conductor */}
         {isConductor && tripStatus === 'accepted' && (
-          <button onClick={handleArrivedPickup} style={styles.pickupButton}>
+          <button
+            onClick={handleArrivedPickup}
+            disabled={!isNearPickup}
+            style={{
+              ...styles.pickupButton,
+              opacity: isNearPickup ? 1 : 0.5,
+              cursor: isNearPickup ? 'pointer' : 'not-allowed',
+            }}
+          >
             📍 Llegué a recoger
           </button>
         )}
 
-        {isConductor && tripStatus === 'in_progress' && (
-          <button onClick={handleArrivedDelivery} style={styles.deliveryButton}>
-            🏁 Llegué a entregar
-          </button>
-        )}
+              {isConductor && tripStatus === 'in_progress' && (
+        <button
+          onClick={handleArrivedDelivery}
+          disabled={!isNearDelivery}
+          style={{
+            ...styles.deliveryButton,
+            opacity: isNearDelivery ? 1 : 0.5,
+            cursor: isNearDelivery ? 'pointer' : 'not-allowed',
+          }}
+        >
+          🏁 Llegué a entregar
+        </button>
+      )}
 
         <div style={styles.actions}>
           <button onClick={() => navigate('/')} style={styles.backButton}>

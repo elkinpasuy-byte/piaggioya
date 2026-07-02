@@ -149,5 +149,6 @@ code {
 .sidebar-btn:hover {
   background: #f0f4ff !important;
   color: #667eea !important;
-  transform: translateX(6px);
+  transform: translateX(1px);
+  border-radius: 12px;
 }

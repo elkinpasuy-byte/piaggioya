@@ -1,12 +1,10 @@
 // src/pages/DriverHome.jsx
-// Panel conductor con diseño moderno (sidebar + mapa + bottom sheet)
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useGeolocation } from '../hooks/useGeolocation';
 import { PiaggioMap } from '../components/map/PiaggioMap';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Menu, X, Home, Package, MapPin, History, Star, DollarSign, User, HelpCircle } from 'lucide-react';
 
@@ -15,10 +13,28 @@ export const DriverHome = () => {
   const { location, loading, error } = useGeolocation();
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
   const [stats, setStats] = useState({ total: 0, completados: 0, pendientes: 0, calificacion: 0 });
   const [activeTrip, setActiveTrip] = useState(null);
 
-  // ===== CARGAR ESTADÍSTICAS REALES =====
+  useEffect(() => {
+    if (user?.uid) {
+      const userRef = doc(db, 'users', user.uid);
+      getDoc(userRef).then((docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.isOnline !== undefined) setIsOnline(data.isOnline);
+        }
+      });
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user?.uid) {
+      updateDoc(doc(db, 'users', user.uid), { isOnline });
+    }
+  }, [isOnline, user]);
+
   useEffect(() => {
     const loadStats = async () => {
       if (!userData?.email) return;
@@ -56,7 +72,6 @@ export const DriverHome = () => {
   const handleLogout = async () => { await logout(); navigate('/login'); };
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
-  // ========== SIDEBAR ==========
   const Sidebar = () => (
     <div style={styles.sidebar}>
       <div style={styles.sidebarHeader}>
@@ -66,156 +81,122 @@ export const DriverHome = () => {
         </button>
       </div>
       <nav style={styles.sidebarNav}>
-        <button  className="sidebar-btn" onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
+        <button className="sidebar-btn" onClick={() => { navigate('/'); toggleSidebar(); }} style={styles.sidebarItem}>
           <Home size={20} /> Inicio
         </button>
-        <button  className="sidebar-btn"onClick={() => { navigate('/driver/trips'); toggleSidebar(); }} style={styles.sidebarItem}>
+        <button className="sidebar-btn" onClick={() => { navigate('/driver/trips'); toggleSidebar(); }} style={styles.sidebarItem}>
           <Package size={20} /> Disponibles
         </button>
-        <button  className="sidebar-btn" onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
+        <button className="sidebar-btn" onClick={() => { navigate('/driver/history'); toggleSidebar(); }} style={styles.sidebarItem}>
           <MapPin size={20} /> Mis viajes
         </button>
-        <button  className="sidebar-btn" onClick={() => { navigate('/driver/history'); toggleSidebar(); }} style={styles.sidebarItem}>
+        <button className="sidebar-btn" onClick={() => { navigate('/driver/history'); toggleSidebar(); }} style={styles.sidebarItem}>
           <History size={20} /> Historial
         </button>
-        <button  className="sidebar-btn" onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
+        <button className="sidebar-btn" onClick={() => { navigate('/driver/ratings'); toggleSidebar(); }} style={styles.sidebarItem}>
           <Star size={20} /> Calificaciones
         </button>
-        <button  className="sidebar-btn" onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
+        <button className="sidebar-btn" onClick={() => { navigate('/driver/earnings'); toggleSidebar(); }} style={styles.sidebarItem}>
           <DollarSign size={20} /> Ganancias
         </button>
-        <button  className="sidebar-btn" onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
+        <button className="sidebar-btn" onClick={() => { navigate('/driver/profile'); toggleSidebar(); }} style={styles.sidebarItem}>
           <User size={20} /> Perfil
         </button>
-        <button  className="sidebar-btn" onClick={() => { toggleSidebar(); }} style={styles.sidebarItem}>
+        <button className="sidebar-btn" onClick={() => { navigate('/driver/help'); toggleSidebar(); }} style={styles.sidebarItem}>
           <HelpCircle size={20} /> Ayuda
         </button>
       </nav>
       <div style={styles.modeToggle}>
-        Modo conductor
-        <input type="checkbox" defaultChecked style={styles.toggleInput} />
+        <span>Modo conductor</span>
+        <div
+          style={{
+            ...styles.toggleSwitch,
+            ...(isOnline ? styles.toggleSwitchActive : {})
+          }}
+          onClick={() => setIsOnline(!isOnline)}
+        >
+          <div
+            style={{
+              ...styles.toggleThumb,
+              ...(isOnline ? styles.toggleThumbActive : {})
+            }}
+          />
+        </div>
       </div>
       <button className="sidebar-btn" onClick={handleLogout} style={styles.sidebarLogout}>
         🚪 Cerrar sesión
       </button>
     </div>
   );
-  
-  
 
-  // ========== RENDER PRINCIPAL ==========
+
+  const statusText = {
+  pending: "Pendiente",
+  accepted: "Aceptado",
+  in_progress: "En camino",
+  delivered: "Entregado",
+  cancelled: "Cancelado",
+};
+
   return (
     <div style={styles.page}>
-      
-      {/* HEADER */}
       <header style={styles.newHeader}>
         <button onClick={toggleSidebar} style={styles.menuBtn}>
           <Menu size={24} />
         </button>
-
         <div>
-          <div style={styles.headerLogo}>
-            🚚 PiaggioYa
-          </div>
-
-          <div style={styles.headerSubtitle}>
-            Hola, {userData?.nombre || 'Conductor'} ✓
-          </div>
+          <div style={styles.headerLogo}>🚚 PiaggioYa</div>
+          <div style={styles.headerSubtitle}>Hola, {userData?.nombre || 'Conductor'} ✓</div>
         </div>
-
         <div style={styles.onlineSection}>
-          🟢 En línea
+          {isOnline ? '🟢 En línea' : '🔴 Desconectado'}
         </div>
       </header>
 
-{/* MAPA */}
-        <div style={styles.mapCard}>
-          <PiaggioMap userLocation={location} />
-        </div>
+      <div style={styles.mapCard}>
+        <PiaggioMap userLocation={location} />
+      </div>
 
-      {/* CONTENIDO */}
       <main style={styles.mainContent}>
-        <div style={styles.statsGrid}>
-          <div style={styles.statCard}>
-            <h2>{stats.total}</h2>
-            <span>Total viajes</span>
-          </div>
-
-          <div style={styles.statCard}>
-            <h2>{stats.completados}</h2>
-            <span>Completados</span>
-          </div>
-
-          <div style={styles.statCard}>
-            <h2>{stats.pendientes}</h2>
-            <span>Pendientes</span>
-          </div>
-
-          <div style={styles.statCard}>
-            <h2>{stats.calificacion.toFixed(1)}</h2>
-            <span>Calificación</span>
-          </div>
-        </div>
-
-        <div style={styles.actionsRow}>
-          <button
-            onClick={() => navigate('/driver/trips')}
-            style={styles.actionBtnPrimary}
-          >
-            Ver envíos disponibles
-          </button>
-        </div>
-
-        
-
-        {/* VIAJE */}
-        {activeTrip && (
+        {activeTrip ? (
           <div style={styles.tripCard}>
             <h3>🚚 Viaje actual</h3>
-
-            <p>
-              <strong>Recogida:</strong>
-              {' '}
-              {activeTrip.pickupAddress}
-            </p>
-
-            <p>
-              <strong>Entrega:</strong>
-              {' '}
-              {activeTrip.deliveryAddress}
-            </p>
-
-            <p>
-              <strong>Pago:</strong>
-              {' '}
-              ${activeTrip.estimatedPrice?.toLocaleString() || 'N/A'}
-            </p>
-
-            <button
-              onClick={() => navigate(`/track/${activeTrip.id}`)}
-              style={styles.tripBtnAccept}
-            >
-              Aceptar viaje
+            <p><strong>Recogida:</strong> {activeTrip.pickupAddress}</p>
+            <p><strong>Entrega:</strong> {activeTrip.deliveryAddress}</p>
+            <p><strong>Pago estimado:</strong> ${activeTrip.estimatedPrice?.toLocaleString() || 'N/A'}</p>
+            <button onClick={() => navigate(`/track/${activeTrip.id}`)} style={styles.tripBtnAccept}>
+              📍 Ver en mapa
             </button>
           </div>
+        ) : (
+          <div style={styles.tripCard}>
+            <h3>👋 Bienvenido a PiaggioYa</h3>
+            <p>No hay viaje activo. Revisa los envíos disponibles para comenzar.</p>
+          </div>
         )}
+
+        <div style={styles.statsGrid}>
+          <div style={styles.statCard}><h2>{stats.total}</h2><span>Total viajes</span></div>
+          <div style={styles.statCard}><h2>{stats.completados}</h2><span>Completados</span></div>
+          <div style={styles.statCard}><h2>{stats.pendientes}</h2><span>Pendientes</span></div>
+          <div style={styles.statCard}><h2>{stats.calificacion.toFixed(1)}</h2><span>Calificación</span></div>
+        </div>
+
+        <button onClick={() => navigate('/driver/trips')} style={styles.actionBtnPrimary}>
+          📦 Ver envíos disponibles
+        </button>
       </main>
-      
-      
+
       <footer style={styles.footer}>
-          🚚 PiaggioYa • Tu aliado en cada entrega
-        </footer>
+        🚚 PiaggioYa • Tu aliado en cada entrega
+      </footer>
 
       {isSidebarOpen && (
         <>
-          <div
-            style={styles.sidebarOverlay}
-            onClick={toggleSidebar}
-          />
+          <div style={styles.sidebarOverlay} onClick={toggleSidebar} />
           <Sidebar />
         </>
       )}
-
     </div>
   );
 };
@@ -231,14 +212,13 @@ const styles = {
     color: '#888',
     background: '#f5f5f5',
   },
-  
-  // PÁGINA PRINCIPAL
   page: {
-    minHeight: '100vh',
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100vh',
     background: '#f5f7fb',
+    overflow: 'hidden',
   },
-
-  // HEADER
   newHeader: {
     height: '70px',
     background: '#fff',
@@ -247,9 +227,7 @@ const styles = {
     justifyContent: 'space-between',
     padding: '0 16px',
     borderBottom: '1px solid #eee',
-    position: 'sticky',
-    top: 0,
-    zIndex: 50,
+    flexShrink: 0,
   },
   menuBtn: {
     background: 'none',
@@ -275,18 +253,23 @@ const styles = {
     fontWeight: '600',
     fontSize: '14px',
   },
-
-  // CONTENIDO
+  mapCard: {
+    height: '350px',
+    borderRadius: '20px',
+    overflow: 'hidden',
+    background: '#fff',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+    flexShrink: 0,
+    margin: '0 16px 16px 16px',
+  },
   mainContent: {
-    padding: '16px',
+    flex: 1,
+    overflowY: 'auto',
+    padding: '0 16px 16px 16px',
     display: 'flex',
     flexDirection: 'column',
     gap: '16px',
-    maxWidth: '800px',
-    margin: '0 auto',
   },
-
-  // ESTADÍSTICAS
   statsGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(4, 1fr)',
@@ -299,20 +282,7 @@ const styles = {
     textAlign: 'center',
     boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
   },
-  statCardText: {
-    fontSize: '24px',
-    fontWeight: '700',
-    color: '#1a1a2e',
-    margin: 0,
-  },
-
-  // BOTONES
-  actionsRow: {
-    display: 'flex',
-    gap: '12px',
-  },
   actionBtnPrimary: {
-    flex: 1,
     padding: '12px',
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     color: '#fff',
@@ -322,25 +292,14 @@ const styles = {
     fontSize: '14px',
     cursor: 'pointer',
     textAlign: 'center',
+    flexShrink: 0,
   },
-
-  // MAPA
-  mapCard: {
-    position:'relative',
-    zIndex:1,
-    height: '350px',
-    borderRadius: '1px solid',
-    overflow: 'hidden',
-    background: '#fff',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-  },
-
-  // VIAJE ACTIVO
   tripCard: {
     background: '#fff',
     borderRadius: '16px',
     padding: '16px',
     boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+    flexShrink: 0,
   },
   tripBtnAccept: {
     width: '100%',
@@ -354,21 +313,18 @@ const styles = {
     cursor: 'pointer',
     marginTop: '8px',
   },
-
-  // FOOTER
   footer: {
     height: '60px',
     background: '#667eea',
     color: '#fff',
-    borderRadius: '1px solid #667eea',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     fontWeight: '600',
     fontSize: '14px',
+    flexShrink: 0,
+    width: '100%',
   },
-
-  // SIDEBAR
   sidebarOverlay: {
     position: 'fixed',
     top: 0,
@@ -431,9 +387,9 @@ const styles = {
     fontWeight: '500',
     cursor: 'pointer',
     textAlign: 'left',
-    width: '100%',
-    borderRadius: '8px',
+    width: 'calc(100% - 16px)',
     margin: '0 8px',
+    borderRadius: '8px',
     transition: 'all 0.2s',
   },
   sidebarItemActive: {
@@ -448,9 +404,9 @@ const styles = {
     fontWeight: '600',
     cursor: 'pointer',
     textAlign: 'left',
-    width: '100%',
-    borderRadius: '8px',
+    width: 'calc(100% - 16px)',
     margin: '0 8px',
+    borderRadius: '8px',
   },
   badge: {
     background: '#667eea',
@@ -470,14 +426,32 @@ const styles = {
     fontSize: '14px',
     color: '#555',
   },
-  toggleInput: {
-    width: '40px',
-    height: '20px',
-    appearance: 'none',
-    background: '#ccc',
-    borderRadius: '20px',
-    cursor: 'pointer',
+  toggleSwitch: {
     position: 'relative',
+    width: '48px',
+    height: '28px',
+    background: '#ccc',
+    borderRadius: '14px',
+    cursor: 'pointer',
+    transition: 'background 0.3s',
+    flexShrink: 0,
+  },
+  toggleSwitchActive: {
+    background: '#4CAF50',
+  },
+  toggleThumb: {
+    position: 'absolute',
+    top: '2px',
+    left: '2px',
+    width: '24px',
+    height: '24px',
+    background: '#fff',
+    borderRadius: '50%',
+    transition: 'transform 0.3s',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+  },
+  toggleThumbActive: {
+    transform: 'translateX(20px)',
   },
   sidebarLogout: {
     margin: '12px 16px',
@@ -493,12 +467,14 @@ const styles = {
   },
 };
 
-// ========== ANIMACIONES ==========
 const styleSheet = document.createElement('style');
 styleSheet.textContent = `
   @keyframes slideIn {
     from { transform: translateX(-100%); }
     to { transform: translateX(0); }
+    .sidebar-btn:hover {
+    background: #f0f0f0;
+}
   }
 `;
 document.head.appendChild(styleSheet);
