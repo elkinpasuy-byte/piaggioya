@@ -59,6 +59,65 @@ export const TripTracking = () => {
   const [isNearPickup, setIsNearPickup] = useState(false);
   const [isNearDelivery, setIsNearDelivery] = useState(false);
 
+  // ===== ESTADOS DE PROXIMIDAD =====
+const [pickupReady, setPickupReady] = useState(false);
+const [deliveryReady, setDeliveryReady] = useState(false);
+const [proximityMessage, setProximityMessage] = useState('');
+
+// ===== CALCULAR DISTANCIA (Haversine) =====
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c * 1000; // metros
+};
+
+// ===== EFECTO DE PROXIMIDAD =====
+useEffect(() => {
+  if (!driverLocation || !shipment) return;
+
+  const distanceToPickup = calculateDistance(
+    driverLocation.lat, driverLocation.lng,
+    shipment.pickupCoords.lat, shipment.pickupCoords.lng
+  );
+  const distanceToDelivery = shipment.deliveryCoords ? calculateDistance(
+    driverLocation.lat, driverLocation.lng,
+    shipment.deliveryCoords.lat, shipment.deliveryCoords.lng
+  ) : Infinity;
+
+  // --- Lógica de recogida ---
+  if (tripStatus === 'accepted') {
+    if (distanceToPickup <= 10 && distanceToPickup > 0) {
+      setPickupReady(true);
+      setProximityMessage('✅ Has llegado al punto de recogida.');
+    } else if (distanceToPickup <= 30) {
+      setPickupReady(false);
+      setProximityMessage('📍 Estás próximo al punto de recogida.');
+    } else {
+      setPickupReady(false);
+      setProximityMessage(`📏 A ${Math.round(distanceToPickup)} m de la recogida`);
+    }
+  }
+
+  // --- Lógica de entrega ---
+  if (tripStatus === 'in_progress') {
+    if (distanceToDelivery <= 10 && distanceToDelivery > 0) {
+      setDeliveryReady(true);
+      setProximityMessage('✅ Has llegado al destino.');
+    } else if (distanceToDelivery <= 30) {
+      setDeliveryReady(false);
+      setProximityMessage('📍 Estás próximo al destino.');
+    } else {
+      setDeliveryReady(false);
+      setProximityMessage(`📏 A ${Math.round(distanceToDelivery)} m del destino`);
+    }
+  }
+}, [driverLocation, shipment, tripStatus]);
+
   // Cargar información del envío
   useEffect(() => {
     const loadShipment = async () => {
@@ -230,6 +289,20 @@ useEffect(() => {
           {tripStatus === 'delivered' && '🏁 Viaje completado'}
         </div>
         
+        {proximityMessage && (
+        <div style={{
+          textAlign: 'center',
+          padding: '8px',
+          marginBottom: '12px',
+          borderRadius: '8px',
+          background: proximityMessage.includes('✅') ? '#e8f5e9' : '#fff3cd',
+          color: proximityMessage.includes('✅') ? '#2e7d32' : '#856404',
+          fontWeight: '500',
+          fontSize: '14px'
+        }}>
+          {proximityMessage}
+        </div>
+      )}
         <div style={styles.cargoInfo}>📦 {shipment.cargoType} - {shipment.cargoWeight} kg</div>
         
         <div style={styles.info}>
@@ -249,34 +322,36 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Botones para conductor */}
-        {isConductor && tripStatus === 'accepted' && (
-          <button
-            onClick={handleArrivedPickup}
-            disabled={!isNearPickup}
-            style={{
-              ...styles.pickupButton,
-              opacity: isNearPickup ? 1 : 0.5,
-              cursor: isNearPickup ? 'pointer' : 'not-allowed',
-            }}
-          >
-            📍 Llegué a recoger
-          </button>
-        )}
+        
+        {/* Botón de recogida (solo para conductor) */}
+{isConductor && tripStatus === 'accepted' && (
+  <button
+    onClick={handleArrivedPickup}
+    disabled={!pickupReady}
+    style={{
+      ...styles.pickupButton,
+      opacity: pickupReady ? 1 : 0.5,
+      cursor: pickupReady ? 'pointer' : 'not-allowed'
+    }}
+  >
+    📦 Recoger mercancía
+  </button>
+)}
 
-              {isConductor && tripStatus === 'in_progress' && (
-        <button
-          onClick={handleArrivedDelivery}
-          disabled={!isNearDelivery}
-          style={{
-            ...styles.deliveryButton,
-            opacity: isNearDelivery ? 1 : 0.5,
-            cursor: isNearDelivery ? 'pointer' : 'not-allowed',
-          }}
-        >
-          🏁 Llegué a entregar
-        </button>
-      )}
+{/* Botón de entrega (solo para conductor) */}
+{isConductor && tripStatus === 'in_progress' && (
+  <button
+    onClick={handleArrivedDelivery}
+    disabled={!deliveryReady}
+    style={{
+      ...styles.deliveryButton,
+      opacity: deliveryReady ? 1 : 0.5,
+      cursor: deliveryReady ? 'pointer' : 'not-allowed'
+    }}
+  >
+    🏁 Entregar mercancía
+  </button>
+)}
 
         <div style={styles.actions}>
           <button onClick={() => navigate('/')} style={styles.backButton}>
@@ -405,5 +480,15 @@ const styles = {
     border: 'none',
     borderRadius: '12px',
     cursor: 'pointer'
-  }
+  },
+
+  pickupButtonDisabled: {
+  opacity: 0.5,
+  cursor: 'not-allowed'
+},
+
+deliveryButtonDisabled: {
+  opacity: 0.5,
+  cursor: 'not-allowed'
+}
 };

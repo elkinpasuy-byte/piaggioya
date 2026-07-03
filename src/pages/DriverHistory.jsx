@@ -303,10 +303,10 @@ const styles = {
     fontSize: '13px'
   },
   filterActive: {
-    background: '#667eea',
-    color: 'white',
-    borderColor: '#667eea'
-  },
+  background: '#667eea',
+  color: 'white',
+  border: '1px solid #667eea'
+},
   loading: {
     textAlign: 'center',
     padding: '40px',
