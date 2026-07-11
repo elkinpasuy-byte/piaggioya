@@ -6,7 +6,7 @@ import { useGeolocation } from '../hooks/useGeolocation';
 import { PiaggioMap } from '../components/map/PiaggioMap';
 import { collection, query, where, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Menu, X, Home, Package, MapPin, History, Star, DollarSign, User, HelpCircle } from 'lucide-react';
+import { Menu, X, Home, Package, MapPin, History, Star, DollarSign, User, HelpCircle, Wifi, WifiOff } from 'lucide-react';
 
 export const DriverHome = () => {
   const { user, userData, logout } = useAuth();
@@ -129,17 +129,9 @@ export const DriverHome = () => {
     </div>
   );
 
-
-  const statusText = {
-  pending: "Pendiente",
-  accepted: "Aceptado",
-  in_progress: "En camino",
-  delivered: "Entregado",
-  cancelled: "Cancelado",
-};
-
   return (
     <div style={styles.page}>
+      {/* HEADER */}
       <header style={styles.newHeader}>
         <button onClick={toggleSidebar} style={styles.menuBtn}>
           <Menu size={24} />
@@ -149,22 +141,51 @@ export const DriverHome = () => {
           <div style={styles.headerSubtitle}>Hola, {userData?.nombre || 'Conductor'} ✓</div>
         </div>
         <div style={styles.onlineSection}>
-          {isOnline ? '🟢 En línea' : '🔴 Desconectado'}
+          {isOnline ? (
+            <>
+              <Wifi size={16} color="#4CAF50" />
+              <span>En línea</span>
+            </>
+          ) : (
+            <>
+              <WifiOff size={16} color="#dc3545" />
+              <span>Desconectado</span>
+            </>
+          )}
         </div>
       </header>
 
+      {/* MAPA */}
       <div style={styles.mapCard}>
         <PiaggioMap userLocation={location} />
       </div>
 
+      {/* CONTENIDO */}
       <main style={styles.mainContent}>
         {activeTrip ? (
           <div style={styles.tripCard}>
-            <h3>🚚 Viaje actual</h3>
-            <p><strong>Recogida:</strong> {activeTrip.pickupAddress}</p>
-            <p><strong>Entrega:</strong> {activeTrip.deliveryAddress}</p>
-            <p><strong>Pago estimado:</strong> ${activeTrip.estimatedPrice?.toLocaleString() || 'N/A'}</p>
-            <button onClick={() => navigate(`/track/${activeTrip.id}`)} style={styles.tripBtnAccept}>
+            <div style={styles.tripHeader}>
+              <span style={styles.tripTitle}>🚚 Viaje actual</span>
+              <span style={styles.tripStatus}>
+                {activeTrip.status === 'accepted' ? 'En camino' : 'En ruta'}
+              </span>
+            </div>
+            <div style={styles.tripDetails}>
+              <p><strong>Recogida:</strong> {activeTrip.pickupAddress}</p>
+              <p><strong>Entrega:</strong> {activeTrip.deliveryAddress}</p>
+              <p><strong>Pago estimado:</strong> ${activeTrip.estimatedPrice?.toLocaleString() || 'N/A'}</p>
+            </div>
+            <button
+              onClick={() => {
+                if (!activeTrip?.id) {
+                  alert("No hay un viaje activo.");
+                  return;
+                }
+                console.log("activeTrip:", activeTrip);
+                navigate(`/track/${activeTrip.id}`);
+              }}
+              style={styles.primaryButton}
+            >
               📍 Ver en mapa
             </button>
           </div>
@@ -176,10 +197,26 @@ export const DriverHome = () => {
         )}
 
         <div style={styles.statsGrid}>
-          <div style={styles.statCard}><h2>{stats.total}</h2><span>Total viajes</span></div>
-          <div style={styles.statCard}><h2>{stats.completados}</h2><span>Completados</span></div>
-          <div style={styles.statCard}><h2>{stats.pendientes}</h2><span>Pendientes</span></div>
-          <div style={styles.statCard}><h2>{stats.calificacion.toFixed(1)}</h2><span>Calificación</span></div>
+          <div style={styles.statCard}>
+            <span style={styles.statIcon}>📦</span>
+            <h2>{stats.total}</h2>
+            <span>Total viajes</span>
+          </div>
+          <div style={styles.statCard}>
+            <span style={styles.statIcon}>✅</span>
+            <h2>{stats.completados}</h2>
+            <span>Completados</span>
+          </div>
+          <div style={styles.statCard}>
+            <span style={styles.statIcon}>🕐</span>
+            <h2>{stats.pendientes}</h2>
+            <span>Pendientes</span>
+          </div>
+          <div style={styles.statCard}>
+            <span style={styles.statIcon}>⭐</span>
+            <h2>{stats.calificacion.toFixed(1)}</h2>
+            <span>Calificación</span>
+          </div>
         </div>
 
         <button onClick={() => navigate('/driver/trips')} style={styles.actionBtnPrimary}>
@@ -201,7 +238,6 @@ export const DriverHome = () => {
   );
 };
 
-// ========== ESTILOS ==========
 const styles = {
   loading: {
     display: 'flex',
@@ -249,9 +285,12 @@ const styles = {
     color: '#667eea',
   },
   onlineSection: {
-    color: '#22c55e',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
     fontWeight: '600',
     fontSize: '14px',
+    color: '#22c55e',
   },
   mapCard: {
     height: '350px',
@@ -282,6 +321,54 @@ const styles = {
     textAlign: 'center',
     boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
   },
+  statIcon: {
+    fontSize: '24px',
+    display: 'block',
+    marginBottom: '4px',
+  },
+  tripCard: {
+    background: '#fff',
+    borderRadius: '16px',
+    padding: '16px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
+    flexShrink: 0,
+  },
+  tripHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '8px',
+  },
+  tripTitle: {
+    fontSize: '16px',
+    fontWeight: '600',
+    color: '#1a1a2e',
+  },
+  tripStatus: {
+    fontSize: '12px',
+    fontWeight: '500',
+    color: '#667eea',
+    background: 'rgba(102,126,234,0.1)',
+    padding: '4px 12px',
+    borderRadius: '20px',
+  },
+  tripDetails: {
+    fontSize: '14px',
+    color: '#555',
+    marginBottom: '12px',
+  },
+  primaryButton: {
+    width: '100%',
+    padding: '12px',
+    background: '#667eea',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '12px',
+    fontSize: '14px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    marginTop: '8px',
+  },
   actionBtnPrimary: {
     padding: '12px',
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -293,25 +380,6 @@ const styles = {
     cursor: 'pointer',
     textAlign: 'center',
     flexShrink: 0,
-  },
-  tripCard: {
-    background: '#fff',
-    borderRadius: '16px',
-    padding: '16px',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-    flexShrink: 0,
-  },
-  tripBtnAccept: {
-    width: '100%',
-    padding: '12px',
-    background: '#4CAF50',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '12px',
-    fontWeight: '600',
-    fontSize: '14px',
-    cursor: 'pointer',
-    marginTop: '8px',
   },
   footer: {
     height: '60px',
@@ -472,9 +540,10 @@ styleSheet.textContent = `
   @keyframes slideIn {
     from { transform: translateX(-100%); }
     to { transform: translateX(0); }
-    .sidebar-btn:hover {
+  }
+  .sidebar-btn:hover {
     background: #f0f0f0;
-}
   }
 `;
 document.head.appendChild(styleSheet);
+export default DriverHome;

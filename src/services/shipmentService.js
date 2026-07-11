@@ -265,29 +265,17 @@ export const getDriverLevel = (average) => {
 };
 
 // Actualizar ubicación del conductor
-export const updateDriverLocation = async (
-  shipmentId,
-  latitude,
-  longitude
-) => {
+export const updateDriverLocation = async (shipmentId, lat, lng) => {
   try {
-    const docRef = doc(db, COLLECTION_NAME, shipmentId);
-
+    const docRef = doc(db, 'shipments', shipmentId);
     await updateDoc(docRef, {
-      driverLocation: {
-        lat: latitude,
-        lng: longitude
-      },
-      updatedAt: Timestamp.now()
+      driverLocation: { lat, lng, updatedAt: new Date().toISOString() }
     });
-
-    return { success: true };
   } catch (error) {
-    console.error('Error actualizando ubicación:', error);
-
-    return {
-      success: false,
-      error: error.message
-    };
+    console.warn('⚠️ Error enviando ubicación, reintentando...', error);
+    setTimeout(() => {
+      updateDriverLocation(shipmentId, lat, lng);
+    }, 2000);
   }
 };
+

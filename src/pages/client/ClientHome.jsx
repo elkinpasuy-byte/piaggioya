@@ -1,15 +1,17 @@
 // src/pages/ClientHome.jsx
 // Panel cliente con diseño moderno (sidebar + mapa + bottom sheet)
 
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { useGeolocation } from '../hooks/useGeolocation';
-import { PiaggioMap } from '../components/map/PiaggioMap';
+import { useAuth } from '../../contexts/AuthContext';
+import { useGeolocation } from '../../hooks/useGeolocation';
+import { PiaggioMap } from '../../components/map/PiaggioMap';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db } from '../../firebase';
 import { Menu, X, Home, Package, History, Star, User, HelpCircle, Truck, MapPin, Clock } from 'lucide-react';
+
+
+
 
 export const ClientHome = () => {
   const { user, userData, logout } = useAuth();
@@ -18,7 +20,6 @@ export const ClientHome = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeShipment, setActiveShipment] = useState(null);
   const [recentTrips, setRecentTrips] = useState([]);
-  
 
   // ===== CARGAR ENVÍOS DEL CLIENTE =====
   useEffect(() => {
@@ -34,11 +35,9 @@ export const ClientHome = () => {
         const envios = [];
         snapshot.forEach(doc => envios.push({ id: doc.id, ...doc.data() }));
         
-        // Buscar envío activo (el primero que no esté entregado)
         const activo = envios.find(v => v.status !== 'delivered');
         setActiveShipment(activo || null);
 
-        // Cargar últimos 3 viajes completados
         const qHistorial = query(
           collection(db, 'shipments'),
           where('clientId', '==', userData.email),
@@ -61,7 +60,6 @@ export const ClientHome = () => {
   const handleLogout = async () => { await logout(); navigate('/login'); };
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
-  // ========== SIDEBAR ==========
   const Sidebar = () => (
     <div style={styles.sidebar}>
       <div style={styles.sidebarHeader}>
@@ -71,26 +69,25 @@ export const ClientHome = () => {
         </button>
       </div>
       <nav style={styles.sidebarNav}>
-
         <button className="sidebar-btn" onClick={() => { navigate('/'); toggleSidebar(); }} style={styles.sidebarItem}>
           <Home size={20} /> Inicio
         </button>
         <button className="sidebar-btn" onClick={() => { navigate('/client/request'); toggleSidebar(); }} style={styles.sidebarItem}>
           <Package size={20} /> Solicitar envío
         </button>
-        <button className="sidebar-btn" onClick={() => { navigate('/client/track');toggleSidebar(); }} style={styles.sidebarItem}>
+        <button className="sidebar-btn" onClick={() => { navigate('/client/track'); toggleSidebar(); }} style={styles.sidebarItem}>
           <MapPin size={20} /> Mi envío
         </button>
         <button className="sidebar-btn" onClick={() => { navigate('/client/trips'); toggleSidebar(); }} style={styles.sidebarItem}>
           <History size={20} /> Historial
         </button>
-        <button className="sidebar-btn" onClick={() => { navigate('/client/ratings');toggleSidebar(); }} style={styles.sidebarItem}>
+        <button className="sidebar-btn" onClick={() => { navigate('/client/ratings'); toggleSidebar(); }} style={styles.sidebarItem}>
           <Star size={20} /> Calificaciones
         </button>
-        <button className="sidebar-btn" onClick={() => {navigate('/client/profile'); toggleSidebar(); }} style={styles.sidebarItem}>
+        <button className="sidebar-btn" onClick={() => { navigate('/client/profile'); toggleSidebar(); }} style={styles.sidebarItem}>
           <User size={20} /> Perfil
         </button>
-        <button className="sidebar-btn" onClick={() => { navigate('/client/help');toggleSidebar(); }} style={styles.sidebarItem}>
+        <button className="sidebar-btn" onClick={() => { navigate('/client/help'); toggleSidebar(); }} style={styles.sidebarItem}>
           <HelpCircle size={20} /> Ayuda
         </button>
       </nav>
@@ -100,57 +97,39 @@ export const ClientHome = () => {
     </div>
   );
 
-  // ========== RENDER PRINCIPAL ==========
   return (
     <div style={styles.page}>
-      
-     {/* console.log('🔥 CLIENTHOME CARGADO');*/}
-
       {/* HEADER */}
-      
       <header style={styles.newHeader}>
         <button onClick={toggleSidebar} style={styles.menuBtn}>
           <Menu size={24} />
         </button>
 
-       <div style={styles.headerLeft}>
-  <div style={styles.avatar}>
-    {(userData?.nombre || 'U').charAt(0).toUpperCase()}
-  </div>
-
-  <div>
-    <div style={styles.headerLogo}>
-      🚚 PiaggioYa
-    </div>
-
-    <div style={styles.headerUser}>
-      {userData?.nombre || 'Cliente'}
-    </div>
-  </div>
-</div>
-        <div style={styles.onlineSection}>
-          🟢 Cliente
+        <div style={styles.headerLeft}>
+          <div style={styles.avatar}>
+            {(userData?.nombre || 'U').charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <div style={styles.headerLogo}>🚚 PiaggioYa</div>
+            <div style={styles.headerUser}>{userData?.nombre || 'Cliente'}</div>
+          </div>
         </div>
+
+        <div style={styles.onlineSection}>🟢 Cliente</div>
       </header>
 
       {/* MAPA */}
-        <div style={styles.mapCard}>
-          <PiaggioMap userLocation={location} />
-        </div>
+      <div style={styles.mapCard}>
+        <PiaggioMap userLocation={location} />
+      </div>
 
       {/* CONTENIDO */}
       <main style={styles.mainContent}>
-
-        {/* BOTÓN PRINCIPAL: SOLICITAR ENVÍO */}
-        <button
-          onClick={() => navigate('/client/request')}
-          style={styles.primaryBtn}
-        >
+        <button onClick={() => navigate('/client/request')} style={styles.primaryBtn}>
           <Truck size={24} style={{ marginRight: '8px' }} />
           Solicitar envío
         </button>
 
-        {/* ENVÍO ACTIVO (si existe) */}
         {activeShipment && (
           <div style={styles.activeCard}>
             <div style={styles.activeHeader}>
@@ -161,74 +140,38 @@ export const ClientHome = () => {
                 {activeShipment.status === 'in_progress' && '🚚 En ruta'}
               </span>
             </div>
-           <div style={styles.activeDetails}>
-  <div>
-    <strong>📍 Recogida</strong>
-    <p>{activeShipment.pickupAddress}</p>
-  </div>
-
-  <div>
-    <strong>🚚 Estado</strong>
-    <p>{activeShipment.status}</p>
-  </div>
-
-  <div>
-    <strong>📦 Entrega</strong>
-    <p>{activeShipment.deliveryAddress}</p>
-  </div>
-
-  <div>
-    <strong>🚚 Servicio</strong>
-    <p>PiaggioYa</p>
-  </div>
-
-</div>
-            <button
-              onClick={() => navigate(`/track/${activeShipment.id}`)}
-              style={styles.trackBtn}
-            >
+            <div style={styles.activeDetails}>
+              <div><strong>📍 Recogida</strong><p>{activeShipment.pickupAddress}</p></div>
+              <div><strong>🚚 Estado</strong><p>{activeShipment.status}</p></div>
+              <div><strong>📦 Entrega</strong><p>{activeShipment.deliveryAddress}</p></div>
+              <div><strong>🚚 Servicio</strong><p>PiaggioYa</p></div>
+            </div>
+            <button onClick={() => navigate(`/track/${activeShipment.id}`)} style={styles.trackBtn}>
               📍 Ver en mapa
             </button>
           </div>
         )}
 
-        
-
-        {/* HISTORIAL RECIENTE */}
         {recentTrips.length > 0 && (
           <div style={styles.historyCard}>
             <h3 style={styles.historyTitle}>📋 Viajes recientes</h3>
             {recentTrips.map((trip, index) => (
               <div key={index} style={styles.historyItem}>
-
-                 <div>
-      <strong>
-        📦 {trip.cargoType || 'Carga'}
-      </strong>
-      <div style={{fontSize:'12px',color:'#888'}}>
-        {trip.cargoWeight || 0} kg
-      </div>
-    </div>
-                <div style={styles.historyStatus}>
-      ✅ Completado
-    </div>
-
-  </div>
+                <div>
+                  <strong>📦 {trip.cargoType || 'Carga'}</strong>
+                  <div style={{ fontSize: '12px', color: '#888' }}>{trip.cargoWeight || 0} kg</div>
+                </div>
+                <div style={styles.historyStatus}>✅ Completado</div>
+              </div>
             ))}
-            <button
-              onClick={() => navigate('/client/trips')}
-              style={styles.historyBtn}
-            >
+            <button onClick={() => navigate('/client/trips')} style={styles.historyBtn}>
               Ver historial completo →
             </button>
           </div>
         )}
       </main>
 
-      {/* FOOTER */}
-        <footer style={styles.footer}>
-          🚚 PiaggioYa • Tu aliado en cada entrega
-        </footer>
+      <footer style={styles.footer}>🚚 PiaggioYa • Tu aliado en cada entrega</footer>
 
       {isSidebarOpen && (
         <>
@@ -236,13 +179,10 @@ export const ClientHome = () => {
           <Sidebar />
         </>
       )}
-
     </div>
   );
 };
 
-
-// ========== ESTILOS ==========
 const styles = {
   loading: {
     display: 'flex',
@@ -253,13 +193,10 @@ const styles = {
     color: '#888',
     background: '#f5f5f5',
   },
-  
   page: {
     minHeight: '100vh',
     background: '#f5f7fb',
   },
-
-  // HEADER
   newHeader: {
     height: '70px',
     background: '#fff',
@@ -284,64 +221,47 @@ const styles = {
     justifyContent: 'center',
     color: '#333',
   },
+  headerLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  avatar: {
+    width: '48px',
+    height: '48px',
+    borderRadius: '50%',
+    background: '#667eea',
+    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: '700',
+    fontSize: '18px',
+  },
   headerLogo: {
     fontSize: '24px',
     fontWeight: '800',
     color: '#111827',
   },
-  headerSubtitle: {
+  headerUser: {
     fontSize: '13px',
-    color: '#667eea',
+    color: '#666',
   },
   onlineSection: {
     color: '#22c55e',
     fontWeight: '600',
     fontSize: '14px',
   },
-  headerContent:{
-  width:'100%',
-  maxWidth:'1200px',
-  display:'flex',
-  justifyContent:'space-between',
-  alignItems:'center'
-},
-
-headerLeft:{
-  display:'flex',
-  alignItems:'center',
-  gap:'12px'
-},
-
-avatar:{
-  width:'48px',
-  height:'48px',
-  borderRadius:'50%',
-  background:'#667eea',
-  color:'#fff',
-  display:'flex',
-  alignItems:'center',
-  justifyContent:'center',
-  fontWeight:'700',
-  fontSize:'18px'
-},
-
-headerUser:{
-  fontSize:'13px',
-  color:'#666'
-},
-
-  // CONTENIDO
- mainContent: {
-  width: '100%',
-  maxWidth: '1200px',
-  margin: '0 auto',
-  padding: '20px',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '20px',
-  boxSizing: 'border-box',
-},
-  // BOTÓN PRINCIPAL
+  mainContent: {
+    width: '100%',
+    maxWidth: '1200px',
+    margin: '0 auto',
+    padding: '20px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px',
+    boxSizing: 'border-box',
+  },
   primaryBtn: {
     padding: '16px',
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -355,17 +275,14 @@ headerUser:{
     alignItems: 'center',
     justifyContent: 'center',
     boxShadow: '0 4px 12px rgba(102,126,234,0.3)',
-    transition: 'transform 0.2s',
   },
-
-  // ENVÍO ACTIVO
-activeCard: {
-  background: '#fff',
-  borderRadius: '20px',
-  padding: '20px',
-  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-  borderLeft: '5px solid #667eea',
-},
+  activeCard: {
+    background: '#fff',
+    borderRadius: '20px',
+    padding: '20px',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+    borderLeft: '5px solid #667eea',
+  },
   activeHeader: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -385,14 +302,14 @@ activeCard: {
     background: '#e8f5e9',
     color: '#2e7d32',
   },
-activeDetails: {
-  display: 'grid',
-  gridTemplateColumns: '1fr 1fr',
-  gap: '12px',
-  fontSize: '14px',
-  color: '#333',
-  marginBottom: '12px',
-},
+  activeDetails: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '12px',
+    fontSize: '14px',
+    color: '#333',
+    marginBottom: '12px',
+  },
   trackBtn: {
     width: '100%',
     padding: '10px',
@@ -404,23 +321,19 @@ activeDetails: {
     fontSize: '14px',
     cursor: 'pointer',
   },
-
-  // MAPA
-  mapCard:{
-  position:'relative',
-  zIndex:1,
-  height:'400px',
-  borderRadius:'1px solid',
-  overflow:'hidden',
-  background:'#fff'
-},
-
-  // HISTORIAL
+  mapCard: {
+    position: 'relative',
+    zIndex: 1,
+    height: '400px',
+    borderRadius: '1px solid',
+    overflow: 'hidden',
+    background: '#fff',
+  },
   historyCard: {
     background: '#fff',
     borderRadius: '16px',
     padding: '16px',
-    border:'1px solid #eef1ff',
+    border: '1px solid #eef1ff',
     boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
   },
   historyTitle: {
@@ -429,15 +342,15 @@ activeDetails: {
     margin: '0 0 12px 0',
     color: '#1a1a2e',
   },
-historyItem: {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: '14px',
-  borderRadius: '12px',
-  background: '#f8f9ff',
-  marginBottom: '10px',
-},
+  historyItem: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '14px',
+    borderRadius: '12px',
+    background: '#f8f9ff',
+    marginBottom: '10px',
+  },
   historyStatus: {
     color: '#4CAF50',
     fontWeight: '500',
@@ -453,13 +366,11 @@ historyItem: {
     width: '100%',
     textAlign: 'center',
   },
-
-  // FOOTER
   footer: {
     width: '100%',
     padding: '16px',
     background: '#667eea',
-    color: '#fff', 
+    color: '#fff',
     borderRadius: '1px solid #667eea',
     display: 'flex',
     alignItems: 'center',
@@ -468,8 +379,6 @@ historyItem: {
     fontSize: '14px',
     boxSizing: 'border-box',
   },
-
-  // SIDEBAR
   sidebarOverlay: {
     position: 'fixed',
     top: 0,
@@ -521,40 +430,21 @@ historyItem: {
     gap: '4px',
   },
   sidebarItem: {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '14px',
-  padding: '10px 20px',
-  border: 'none',
-  background: 'transparent',
-  color: '#555',
-  fontSize: '14px',
-  fontWeight: '500',
-  cursor: 'pointer',
-  textAlign: 'left',
-
-  width: 'calc(100% - 16px)',
-  margin: '0 8px',
-  boxSizing: 'border-box',
-
-  borderRadius: '8px',
-  transition: 'all 0.2s',
-},
-  sidebarItemActive: {
     display: 'flex',
     alignItems: 'center',
     gap: '14px',
     padding: '10px 20px',
     border: 'none',
-    background: '#f0f4ff',
-    color: '#667eea',
+    background: 'transparent',
+    color: '#555',
     fontSize: '14px',
-    fontWeight: '600',
+    fontWeight: '500',
     cursor: 'pointer',
     textAlign: 'left',
-    width: '100%',
-    borderRadius: '8px',
+    width: 'calc(100% - 16px)',
     margin: '0 8px',
+    borderRadius: '8px',
+    transition: 'all 0.2s',
   },
   sidebarLogout: {
     margin: '12px 16px',
@@ -570,12 +460,16 @@ historyItem: {
   },
 };
 
-// ========== ANIMACIONES ==========
 const styleSheet = document.createElement('style');
 styleSheet.textContent = `
   @keyframes slideIn {
     from { transform: translateX(-100%); }
     to { transform: translateX(0); }
   }
+  .sidebar-btn:hover {
+    background: #f0f0f0;
+  }
 `;
 document.head.appendChild(styleSheet);
+
+export default ClientHome;

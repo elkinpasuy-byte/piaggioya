@@ -12,7 +12,7 @@ export const useGeolocation = () => {
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
+    const watchId = navigator.geolocation.watchPosition(
       (position) => {
         setLocation({
           lat: position.coords.latitude,
@@ -23,14 +23,17 @@ export const useGeolocation = () => {
       (err) => {
         setError(err.message);
         setLoading(false);
-
-        // ubicación por defecto (Pasto)
-        setLocation({
-          lat: 1.2136,
-          lng: -77.2811,
-        });
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 5000,
+        timeout: 10000,
       }
     );
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+    };
   }, []);
 
   return { location, loading, error };

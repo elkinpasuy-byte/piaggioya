@@ -18,6 +18,8 @@ export const AuthProvider = ({ children }) => {
       
       if (firebaseUser) {
         const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+        console.log("Existe documento:", userDoc.exists());
+
         if (userDoc.exists()) {
           const userDataFromDb = userDoc.data();
           setUserRole(userDataFromDb.role);

@@ -1,8 +1,7 @@
-// src/pages/DriverTrips.jsx
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { getPendingShipments, acceptShipment, updateShipmentStatus } from '../services/shipmentService';
+import { getPendingShipments, acceptShipment } from '../services/shipmentService';
 
 export const DriverTrips = () => {
   const { userData } = useAuth();
@@ -38,19 +37,11 @@ export const DriverTrips = () => {
     );
     
     if (result.success) {
-      navigate(`/track/${shipmentId}`);
+      navigate(`/driver/trip/${shipmentId}`);
     } else {
       alert('❌ Error: ' + result.error);
     }
     setAcceptingId(null);
-  };
-
-  const calculatePrice = (weight, distance) => {
-    const basePrice = 5000;
-    const pricePerKg = 200;
-    const pricePerKm = 800;
-    const estimatedDistance = distance || 5;
-    return basePrice + (weight * pricePerKg) + (estimatedDistance * pricePerKm);
   };
 
   const formatPrice = (price) => {
@@ -119,58 +110,55 @@ export const DriverTrips = () => {
         </div>
       ) : (
         <div style={styles.list}>
-          {pendingShipments.map((shipment) => {
-            const estimatedPrice = calculatePrice(shipment.cargoWeight, 5);
-            return (
-              <div key={shipment.id} style={styles.card}>
-                <div style={styles.cardHeader}>
-                  <span style={styles.tripId}>#{shipment.id.slice(-6)}</span>
-                  <span style={styles.badge}>🕐 Pendiente</span>
-                  <span style={styles.time}>
-                    {shipment.createdAt?.toDate?.() 
-                      ? new Date(shipment.createdAt.toDate()).toLocaleTimeString()
-                      : 'Reciente'}
-                  </span>
+          {pendingShipments.map((shipment) => (
+            <div key={shipment.id} style={styles.card}>
+              <div style={styles.cardHeader}>
+                <span style={styles.tripId}>#{shipment.id.slice(-6)}</span>
+                <span style={styles.badge}>🕐 Pendiente</span>
+                <span style={styles.time}>
+                  {shipment.createdAt?.toDate?.() 
+                    ? new Date(shipment.createdAt.toDate()).toLocaleTimeString()
+                    : 'Reciente'}
+                </span>
+              </div>
+              
+              <div style={styles.cargoInfo}>
+                <div style={styles.cargoType}>
+                  📦 {shipment.cargoType || 'Carga general'} • {shipment.cargoWeight} kg
                 </div>
-                
-                <div style={styles.cargoInfo}>
-                  <div style={styles.cargoType}>
-                    📦 {shipment.cargoType || 'Carga general'} • {shipment.cargoWeight} kg
-                  </div>
+              </div>
+              
+              <div style={styles.addresses}>
+                <div style={styles.addressRow}>
+                  <span style={styles.addressIcon}>📍</span>
+                  <span style={styles.addressText}>{shipment.pickupAddress}</span>
                 </div>
-                
-                <div style={styles.addresses}>
-                  <div style={styles.addressRow}>
-                    <span style={styles.addressIcon}>📍</span>
-                    <span style={styles.addressText}>{shipment.pickupAddress}</span>
-                  </div>
-                  <div style={styles.addressRow}>
-                    <span style={styles.addressIcon}>🏁</span>
-                    <span style={styles.addressText}>{shipment.deliveryAddress}</span>
-                  </div>
+                <div style={styles.addressRow}>
+                  <span style={styles.addressIcon}>🏁</span>
+                  <span style={styles.addressText}>{shipment.deliveryAddress}</span>
                 </div>
-                
-                <div style={styles.details}>
-                  <div style={styles.detailRow}>
-                    <span>👤 Cliente:</span>
-                    <span>{shipment.clientName || shipment.clientId}</span>
-                  </div>
-                  <div style={styles.detailRow}>
-                    <span>💰 Pago estimado:</span>
-                    <span style={styles.price}>{formatPrice(estimatedPrice)}</span>
-                  </div>
+              </div>
+              
+              <div style={styles.details}>
+                <div style={styles.detailRow}>
+                  <span>👤 Cliente:</span>
+                  <span>{shipment.clientName || shipment.clientId}</span>
                 </div>
-                
-               <button
-  onClick={() => handleAcceptShipment(shipment.id)}
-  disabled={acceptingId === shipment.id}
-  style={styles.acceptButton}
->
-  {acceptingId === shipment.id ? 'Aceptando...' : '✅ Aceptar envío'}
-</button>
-        </div>
-            );
-          })}
+                <div style={styles.detailRow}>
+                  <span>💰 Pago estimado:</span>
+                  <span style={styles.price}>{formatPrice(shipment.estimatedPrice || 0)}</span>
+                </div>
+              </div>
+              
+              <button
+                onClick={() => handleAcceptShipment(shipment.id)}
+                disabled={acceptingId === shipment.id}
+                style={styles.acceptButton}
+              >
+                {acceptingId === shipment.id ? 'Aceptando...' : '✅ Aceptar envío'}
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </div>

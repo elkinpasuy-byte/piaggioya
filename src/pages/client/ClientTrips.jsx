@@ -2,8 +2,8 @@
 // Historial de envíos del cliente con estado y calificación
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { getClientShipments, updateShipmentStatus, rateShipment, updateDriverAverageRating, getShipmentById } from '../services/shipmentService';
+import { useAuth } from '../../contexts/AuthContext';
+import { getClientShipments, updateShipmentStatus, rateShipment, updateDriverAverageRating, getShipmentById } from '../../services/shipmentService';
 import { useNavigate } from 'react-router-dom';
 
 export const ClientTrips = () => {
@@ -213,7 +213,7 @@ const styles = {
   title: { margin: 0, fontSize: '20px', fontWeight: '600' },
   filters: { display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' },
   filterBtn: { padding: '6px 12px', borderRadius: '20px', border: '1px solid #ddd', background: 'white', cursor: 'pointer', fontSize: '12px' },
-  filterActive: { background: '#667eea', color: 'white', borderColor: '#667eea' },
+  filterActive: { background: '#667eea', color: 'white', borderColor: '1px solid #667eea' },
   loading: { textAlign: 'center', padding: '40px', color: '#666' },
   error: { textAlign: 'center', padding: '20px', color: '#c00', background: '#fee', borderRadius: '12px' },
   empty: { textAlign: 'center', padding: '40px', background: 'white', borderRadius: '16px' },

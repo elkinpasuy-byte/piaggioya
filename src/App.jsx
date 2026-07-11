@@ -6,14 +6,31 @@ import { PiaggioMap } from './components/map/PiaggioMap';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useState } from 'react';
 import { LogOut, User } from 'lucide-react';
-import { ClientRequest } from './pages/ClientRequest';
-import { ClientTrips } from './pages/ClientTrips';
+import { ClientRequest } from './pages/client/ClientRequest.jsx';
+import { ClientTrips } from './pages/client/ClientTrips.jsx';
 import { DriverTrips } from './pages/DriverTrips';
 import { DriverHistory } from './pages/DriverHistory';
 import { TripTracking } from './pages/TripTracking';
-import { DriverHome } from './pages/DriverHome';
 
-import { ClientHome } from './pages/ClientHome';
+import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { AdminRoute } from './components/AdminRoute';
+import { AdminShipments } from './pages/admin/AdminShipments';
+
+import DriverHome from "./pages/DriverHome.jsx";
+
+import DriverTrip from './pages/driver/DriverTrip';
+import ClientTrip from './pages/client/ClientTrip';
+
+import { AdminDrivers } from './pages/admin/AdminDrivers';
+
+import { AdminClients } from './pages/admin/AdminClients';
+
+
+
+
+
+
+import { ClientHome } from './pages/client/ClientHome.jsx';
   
 // Cliente
 import ClientTrack from './pages/client/ClientTrack';
@@ -21,11 +38,14 @@ import ClientRatings from './pages/client/ClientRatings';
 import ClientProfile from './pages/client/ClientProfile';
 import ClientHelp from './pages/client/ClientHelp';
 
+
 // Conductor
 import DriverRatings from './pages/driver/DriverRatings';
 import DriverEarnings from './pages/driver/DriverEarnings';
 import DriverProfile from './pages/driver/DriverProfile';
 import DriverHelp from './pages/driver/DriverHelp';
+
+
 
 
 
@@ -74,16 +94,25 @@ const ClientHomeold = () => {
 
 // ==================== PROTECTED ROUTE ====================
 const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth();
-  
+  const { user, loading, userData } = useAuth();
+
   if (loading) return <div>Cargando...</div>;
   if (!user) return <Navigate to="/login" />;
-  
-  const email = user.email || '';
-  const isConductor = email.includes('conductor');
-  
-  if (isConductor) return children || <DriverHome />;
-  return children || <ClientHome />;
+
+  // ✅ Redirigir según rol
+  if (userData?.role === 'admin') {
+    return <Navigate to="/admin" />;
+  }
+
+  if (userData?.role === 'conductor') {
+    return children || <DriverHome />;
+  }
+
+  if (userData?.role === 'cliente') {
+    return children || <ClientHome />;
+  }
+
+  return <Navigate to="/login" />;
 };
 
 
@@ -96,16 +125,26 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<ProtectedRoute />} />
           
+          <Route path="/admin" element={<AdminRoute><AdminDashboard /> </AdminRoute>} />
+
           <Route path="/client/request" element={<ProtectedRoute><ClientRequest /></ProtectedRoute>} />
           <Route path="/client/trips" element={<ProtectedRoute><ClientTrips /></ProtectedRoute>} />
           
           <Route path="/driver/trips" element={<ProtectedRoute><DriverTrips /></ProtectedRoute>} />
           <Route path="/driver/history" element={<ProtectedRoute><DriverHistory /></ProtectedRoute>} />
+          <Route path="/driver/home" element={<ProtectedRoute><DriverHome /></ProtectedRoute>} />
           
           {/* 👇 ESTA ES LA RUTA QUE FALTABA */}
           <Route path="/driver/trip/:shipmentId" element={<ProtectedRoute><TripTracking /></ProtectedRoute>} />
+
+          <Route path="/driver/trip/:shipmentId" element={<ProtectedRoute><DriverTrip /></ProtectedRoute>} />
+          <Route path="/track/:id" element={<ProtectedRoute><ClientTrip /></ProtectedRoute>} />
           
           <Route path="/track/:id" element={<ProtectedRoute><TripTracking /></ProtectedRoute>} />
+
+          <Route path="/track/:id" element={<ProtectedRoute><ClientTrip /></ProtectedRoute>} />
+          <Route path="/driver/trip/:shipmentId" element={<ProtectedRoute><DriverTrip /></ProtectedRoute>} />
+          
           <Route path="/driver/dashboard" element={<ProtectedRoute><DriverHome /></ProtectedRoute>} />
 
           <Route path="/client/track" element={<ProtectedRoute><ClientTrack /></ProtectedRoute>} />
@@ -118,6 +157,12 @@ function App() {
           <Route path="/driver/profile" element={<ProtectedRoute><DriverProfile /></ProtectedRoute>} />
           <Route path="/driver/help" element={<ProtectedRoute><DriverHelp /></ProtectedRoute>} />     
 
+          <Route path="/admin/shipments" element={<AdminRoute><AdminShipments /></AdminRoute>}/>
+          <Route path="/admin/drivers" element={<AdminRoute><AdminDrivers/></AdminRoute>} />
+
+          <Route path="/admin/clients" element={<AdminRoute><AdminClients /></AdminRoute>} />
+
+          <Route path="/driver/earnings" element={<ProtectedRoute><DriverEarnings /></ProtectedRoute>} />
         </Routes>
       </Router>
     </AuthProvider>
