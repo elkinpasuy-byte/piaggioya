@@ -26,7 +26,7 @@ import { AdminDrivers } from './pages/admin/AdminDrivers';
 import { AdminClients } from './pages/admin/AdminClients';
 
 
-
+import ClientChat from './pages/ClientChat';
 
 
 
@@ -163,6 +163,7 @@ function App() {
           <Route path="/admin/clients" element={<AdminRoute><AdminClients /></AdminRoute>} />
 
           <Route path="/driver/earnings" element={<ProtectedRoute><DriverEarnings /></ProtectedRoute>} />
+          <Route path="/chat/:shipmentId" element={  <ProtectedRoute>    <ClientChat />  </ProtectedRoute>} />
         </Routes>
       </Router>
     </AuthProvider>

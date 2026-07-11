@@ -1,7 +1,41 @@
 // src/components/ChatModal.jsx
 import { useState, useEffect, useRef } from 'react';
-import { sendMessage, listenToMessages } from '../services/chatService';
 import { X, Send } from 'lucide-react';
+import { db } from '../firebase';
+import { collection, addDoc, query, where, orderBy, onSnapshot, Timestamp } from 'firebase/firestore';
+
+// Servicio de chat integrado directamente
+const sendMessage = async (shipmentId, senderId, senderName, message) => {
+  try {
+    await addDoc(collection(db, 'chats'), {
+      shipmentId,
+      senderId,
+      senderName,
+      message,
+      timestamp: Timestamp.now(),
+      read: false
+    });
+    return { success: true };
+  } catch (error) {
+    console.error('Error enviando mensaje:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+const listenToMessages = (shipmentId, callback) => {
+  const q = query(
+    collection(db, 'chats'),
+    where('shipmentId', '==', shipmentId),
+    orderBy('timestamp', 'asc')
+  );
+  return onSnapshot(q, (snapshot) => {
+    const messages = [];
+    snapshot.forEach(doc => {
+      messages.push({ id: doc.id, ...doc.data() });
+    });
+    callback(messages);
+  });
+};
 
 export const ChatModal = ({ shipmentId, userData, isOpen, onClose }) => {
   const [messages, setMessages] = useState([]);

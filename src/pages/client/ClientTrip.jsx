@@ -1,5 +1,5 @@
 // src/pages/client/ClientTrip.jsx
-// Cliente: solo ve el estado del envío y la ubicación del conductor
+// Cliente: ve el estado del envío, la ubicación del conductor y puede chatear
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -78,6 +78,8 @@ export default function ClientTrip() {
     ? [shipment.pickupCoords.lat, shipment.pickupCoords.lng]
     : [4.6097, -74.0817];
 
+  const canChat = shipment.status === 'accepted' || shipment.status === 'in_progress';
+
   return (
     <div style={styles.container}>
       <MapContainer center={mapCenter} zoom={14} style={{ height: '100%', width: '100%' }}>
@@ -111,6 +113,31 @@ export default function ClientTrip() {
           <div style={styles.infoRow}><span>🚚 Conductor:</span><span>{shipment.driverName || 'Sin asignar'}</span></div>
           <div style={styles.infoRow}><span>💰 Precio:</span><span style={styles.price}>${shipment.estimatedPrice?.toLocaleString() || 'N/A'}</span></div>
         </div>
+
+        {canChat && (
+          <button
+            onClick={() => navigate(`/chat/${id}`)}
+            style={{
+              width: '100%',
+              padding: '12px',
+              background: '#25D366',
+              color: 'white',
+              border: 'none',
+              borderRadius: '12px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              marginBottom: '12px',
+            }}
+          >
+            💬 Chat con el conductor
+          </button>
+        )}
+
         <button onClick={() => navigate(-1)} style={styles.backButton}>← Volver</button>
       </div>
     </div>

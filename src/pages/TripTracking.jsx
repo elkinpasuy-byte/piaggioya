@@ -7,6 +7,8 @@ import { updateShipmentStatus, updateDriverLocation } from '../services/shipment
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import 'leaflet/dist/leaflet.css';
+import { ChatModal } from '../components/ChatModal';
+
 
 // ==================== ICONOS ====================
 const driverIcon = L.icon({
@@ -50,6 +52,7 @@ export const TripTracking = () => {
   const [pickupReady, setPickupReady] = useState(false);
   const [deliveryReady, setDeliveryReady] = useState(false);
   const [proximityMessage, setProximityMessage] = useState('');
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   const watchIdRef = useRef(null);
   const unsubscribeRef = useRef(null);
@@ -164,7 +167,6 @@ export const TripTracking = () => {
     };
   }, [shipmentIdFinal]);
 
-  // ==================== PROXIMIDAD ====================
   useEffect(() => {
     const location = currentLocation || shipment?.driverLocation;
     console.log('📍 Ubicación usada para proximidad:', location);
@@ -173,7 +175,6 @@ export const TripTracking = () => {
     }
   }, [shipment, tripStatus, currentLocation, updateProximity]);
 
-  // ==================== GPS SOLO PARA CONDUCTOR ====================
   useEffect(() => {
     if (!isConductor) {
       console.log('⏳ No es conductor, GPS desactivado');
@@ -218,7 +219,10 @@ export const TripTracking = () => {
         }
       },
       {
-        enableHighAccuracy: true,maximumAge: 0,timeout: 10000}
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 10000
+      }
     );
 
     watchIdRef.current = watchId;
@@ -230,7 +234,6 @@ export const TripTracking = () => {
     };
   }, [isConductor, tripStatus, shipmentIdFinal]);
 
-  // ==================== LIMPIEZA ====================
   useEffect(() => {
     return () => {
       if (unsubscribeRef.current) {
@@ -244,7 +247,6 @@ export const TripTracking = () => {
     };
   }, []);
 
-  // ==================== HANDLERS ====================
   const handleArrivedPickup = async () => {
     if (!pickupReady) return;
     const result = await updateShipmentStatus(shipmentIdFinal, 'in_progress');
@@ -268,7 +270,6 @@ export const TripTracking = () => {
     }
   };
 
-  // ==================== RENDER ====================
   if (loading) return <div style={styles.container}>Cargando viaje...</div>;
   if (error) return (
     <div style={styles.container}>
@@ -341,17 +342,74 @@ export const TripTracking = () => {
         )}
 
         <div style={styles.actions}>
-          <button onClick={() => navigate('/')} style={styles.backButton}>← Volver al mapa</button>
+          {isConductor && (tripStatus === 'accepted' || tripStatus === 'in_progress') && (
+            <button
+              onClick={() => setIsChatOpen(true)}
+              style={{
+                flex: 1,
+                padding: '12px',
+                background: '#25D366',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+              }}
+            >
+              💬 Chat con el cliente
+            </button>
+          )}
+
+          {isCliente && (tripStatus === 'accepted' || tripStatus === 'in_progress') && (
+            <button
+              onClick={() => setIsChatOpen(true)}
+              style={{
+                flex: 1,
+                padding: '12px',
+                background: '#25D366',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+              }}
+            >
+              💬 Chat con el conductor
+            </button>
+          )}
+
+          <button onClick={() => navigate('/')} style={styles.backButton}>
+            ← Volver al mapa
+          </button>
+
           {isCliente && tripStatus === 'delivered' && (
-            <button onClick={() => navigate(`/rate-driver/${shipmentIdFinal}`)} style={styles.rateButton}>⭐ Calificar viaje</button>
+            <button onClick={() => navigate(`/rate-driver/${shipmentIdFinal}`)} style={styles.rateButton}>
+              ⭐ Calificar viaje
+            </button>
           )}
         </div>
       </div>
+
+      <ChatModal
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        shipmentId={shipmentIdFinal}
+        userData={userData}
+      />
     </div>
   );
 };
 
-// ==================== ESTILOS ====================
 const styles = {
   container: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   panel: { position: 'fixed', bottom: 0, left: 0, right: 0, background: 'white', borderRadius: '20px 20px 0 0', padding: '16px 20px', boxShadow: '0 -4px 20px rgba(0,0,0,0.1)', zIndex: 1000, maxHeight: '60vh', overflowY: 'auto' },
@@ -363,7 +421,7 @@ const styles = {
   price: { fontWeight: '600', color: '#4CAF50' },
   pickupButton: (ready) => ({ width: '100%', padding: '12px', background: ready ? '#007bff' : '#6c757d', color: 'white', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: '600', cursor: ready ? 'pointer' : 'not-allowed', marginBottom: '8px', opacity: ready ? 1 : 0.6 }),
   deliveryButton: (ready) => ({ width: '100%', padding: '12px', background: ready ? '#28a745' : '#6c757d', color: 'white', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: '600', cursor: ready ? 'pointer' : 'not-allowed', marginBottom: '8px', opacity: ready ? 1 : 0.6 }),
-  actions: { display: 'flex', gap: '12px' },
+  actions: { display: 'flex', gap: '12px', flexWrap: 'wrap' },
   backButton: { flex: 1, padding: '12px', background: '#667eea', color: 'white', border: 'none', borderRadius: '12px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
   rateButton: { flex: 1, padding: '12px', background: '#ffc107', color: '#333', border: 'none', borderRadius: '12px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
   button: { padding: '12px 24px', background: '#667eea', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer' }
