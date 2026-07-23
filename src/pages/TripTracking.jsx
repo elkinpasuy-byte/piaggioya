@@ -90,14 +90,6 @@ export const TripTracking = () => {
       setPickupReady(false);
       setDeliveryReady(false);
       setProximityMessage('❌ Viaje cancelado');
-      console.log('🔍 CONDICIONES BOTONES:', {
-  isConductor,
-  isCliente,
-  tripStatus,
-  agreedPrice: shipment?.agreedPrice,
-  pickupReady,
-  deliveryReady
-});
       return;
     }
 
@@ -453,14 +445,6 @@ export const TripTracking = () => {
 
   const canCancel = ['accepted', 'in_progress'].includes(tripStatus);
 
-  // ===== DEBUG BOTONES =====
-console.log("=== DEBUG BOTONES ===");
-console.log("Rol:", userData?.role);
-console.log("isCliente:", isCliente);
-console.log("tripStatus:", tripStatus);
-console.log("proposedPrice:", shipment?.proposedPrice);
-console.log("agreedPrice:", shipment?.agreedPrice);
-
   return (
     <div style={styles.container}>
       <Toaster position="top-center" />
@@ -468,7 +452,7 @@ console.log("agreedPrice:", shipment?.agreedPrice);
       <MapContainer 
         center={mapCenter} 
         zoom={14} 
-        style={{ height: '55%', width: '100%' }}
+        style={{ height: '100%', width: '100%' }}
         zoomControl={true}
       >
         <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -489,19 +473,6 @@ console.log("agreedPrice:", shipment?.agreedPrice);
         )}
       </MapContainer>
 
-<h1
-  style={{
-    position: 'fixed',
-    top: 20,
-    left: 20,
-    zIndex: 999999,
-    background: 'red',
-    color: 'white',
-    fontSize: 40
-  }}
->
-PRUEBA 123
-</h1>
       <div style={styles.panel}>
         <div style={styles.infoContainer}>
           <div style={styles.statusBadge}>
@@ -559,24 +530,21 @@ PRUEBA 123
           )}
 
           {/* ===== CLIENTE: ACEPTAR/RECHAZAR PROPUESTA ===== */}
-          {true && (
-  <div style={styles.proposalBox}>
-    <p style={styles.proposalText}>
-      El conductor propone:
-      <strong>${Number(shipment.proposedPrice).toLocaleString()}</strong>
-    </p>
-
-    <div style={styles.proposalActions}>
-      <button onClick={handleAcceptPrice} style={styles.acceptButton}>
-        ✅ Aceptar
-      </button>
-
-      <button onClick={handleRejectPrice} style={styles.rejectButton}>
-        ❌ Rechazar
-      </button>
-    </div>
-  </div>
-)}
+          {isCliente && tripStatus === 'accepted' && shipment.proposedPrice && !shipment.agreedPrice && (
+            <div style={styles.proposalBox}>
+              <p style={styles.proposalText}>
+                El conductor propone: <strong>${Number(shipment.proposedPrice).toLocaleString()}</strong>
+              </p>
+              <div style={styles.proposalActions}>
+                <button onClick={handleAcceptPrice} style={styles.acceptButton}>
+                  ✅ Aceptar
+                </button>
+                <button onClick={handleRejectPrice} style={styles.rejectButton}>
+                  ❌ Rechazar
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ===== CONTENEDOR DE ACCIONES ===== */}
@@ -651,46 +619,41 @@ const styles = {
     borderRadius: '20px 20px 0 0',
     boxShadow: '0 -8px 30px rgba(0,0,0,0.12)',
     zIndex: 1000,
-    // 🔥 NUEVA CONFIGURACIÓN PARA MÓVIL
     height: 'auto',
     maxHeight: '90vh',
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
     padding: '16px 16px 0 16px',
-    // Para iPhone safe area
     paddingBottom: 'env(safe-area-inset-bottom)',
   },
 
   // ===== CONTENIDO SCROLLABLE =====
   infoContainer: {
     flex: '1 1 auto',
-    minHeight: 0,          // ← necesario para scroll en flex
+    minHeight: 0,
     overflowY: 'auto',
     paddingBottom: '12px',
-    // Para que no se solape con la barra inferior
     marginBottom: '4px',
   },
 
   // ===== BOTONES SIEMPRE VISIBLES =====
-actionsContainer: {
-  flexShrink: 0,
-  paddingTop: '12px',
-  paddingBottom: '12px',
-  borderTop: '1px solid #f0f0f0',
-  background: 'white',
-  position: 'relative',
-  zIndex: 9999,           // ← MUY ALTO
-  display: 'block !important',
-  opacity: '1 !important',
-  height: 'auto !important',
-  minHeight: '60px',      // ← ALTURA MÍNIMA
-  overflow: 'visible !important',
-  // Borde rojo temporal para ver si aparece
-  border: '3px solid red',
-},
+  actionsContainer: {
+    flexShrink: 0,
+    paddingTop: '12px',
+    paddingBottom: '12px',
+    borderTop: '1px solid #f0f0f0',
+    background: 'white',
+    position: 'relative',
+    zIndex: 2,
+    display: 'block',
+    opacity: 1,
+    height: 'auto',
+    minHeight: '60px',
+    overflow: 'visible',
+  },
 
-  // ===== RESTO DE ESTILOS (SIN CAMBIOS) =====
+  // ===== RESTO DE ESTILOS =====
   statusBadge: {
     textAlign: 'center',
     padding: '8px',
