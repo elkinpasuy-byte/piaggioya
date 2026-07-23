@@ -8,10 +8,7 @@ import { useGeolocation } from '../../hooks/useGeolocation';
 import { PiaggioMap } from '../../components/map/PiaggioMap';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { Menu, X, Home, Package, History, Star, User, HelpCircle, Truck, MapPin, Clock } from 'lucide-react';
-
-
-
+import { Menu, X, Home, Package, History, Star, User, HelpCircle, Truck, MapPin } from 'lucide-react';
 
 export const ClientHome = () => {
   const { user, userData, logout } = useAuth();
@@ -57,15 +54,30 @@ export const ClientHome = () => {
   if (loading) return <div style={styles.loading}>Cargando ubicación...</div>;
   if (error) return <div style={styles.loading}>Error: {error}</div>;
 
-  const handleLogout = async () => { await logout(); navigate('/login'); };
-  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+  const handleLogout = async () => { 
+    await logout(); 
+    navigate('/login'); 
+  };
 
+  const toggleSidebar = () => {
+    console.log('🔄 toggleSidebar - estado actual:', isSidebarOpen, '→ nuevo:', !isSidebarOpen);
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  // ===== SIDEBAR =====
   const Sidebar = () => (
     <div style={styles.sidebar}>
       <div style={styles.sidebarHeader}>
         <div style={styles.logo}>🚚 <span>Piaggio<span style={{ color: '#667eea' }}>Ya</span></span></div>
-        <button onClick={toggleSidebar} style={styles.sidebarClose}>
-          <X size={24} color="#fff" />
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            console.log('🔘 Botón cerrar sidebar clickeado');
+            toggleSidebar();
+          }}
+          style={styles.sidebarClose}
+        >
+          <X size={24} color="#888" />
         </button>
       </div>
       <nav style={styles.sidebarNav}>
@@ -101,7 +113,14 @@ export const ClientHome = () => {
     <div style={styles.page}>
       {/* HEADER */}
       <header style={styles.newHeader}>
-        <button onClick={toggleSidebar} style={styles.menuBtn}>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            console.log('🔘 Botón menú clickeado');
+            toggleSidebar();
+          }}
+          style={styles.menuBtn}
+        >
           <Menu size={24} />
         </button>
 
@@ -154,7 +173,7 @@ export const ClientHome = () => {
 
         {recentTrips.length > 0 && (
           <div style={styles.historyCard}>
-            <h3 style={styles.historyTitle}>📋 Viajes recientes</h3>
+            <h3 style={styles.historyTitle}>📋 Envíos recientes</h3>
             {recentTrips.map((trip, index) => (
               <div key={index} style={styles.historyItem}>
                 <div>
@@ -173,9 +192,16 @@ export const ClientHome = () => {
 
       <footer style={styles.footer}>🚚 PiaggioYa • Tu aliado en cada entrega</footer>
 
+      {/* ===== SIDEBAR Y OVERLAY ===== */}
       {isSidebarOpen && (
         <>
-          <div style={styles.sidebarOverlay} onClick={toggleSidebar} />
+          <div
+            style={styles.sidebarOverlay}
+            onClick={() => {
+              console.log('🌑 Overlay clickeado - cerrando menú');
+              toggleSidebar();
+            }}
+          />
           <Sidebar />
         </>
       )}
@@ -196,6 +222,8 @@ const styles = {
   page: {
     minHeight: '100vh',
     background: '#f5f7fb',
+    display: 'flex',
+    flexDirection: 'column',
   },
   newHeader: {
     height: '70px',
@@ -210,6 +238,7 @@ const styles = {
     zIndex: 50,
     width: '100%',
     boxSizing: 'border-box',
+    flexShrink: 0,
   },
   menuBtn: {
     background: 'none',
@@ -252,6 +281,15 @@ const styles = {
     fontWeight: '600',
     fontSize: '14px',
   },
+  mapCard: {
+    position: 'relative',
+    zIndex: 1,
+    height: '400px',
+    borderRadius: '1px solid',
+    overflow: 'hidden',
+    background: '#fff',
+    flexShrink: 0,
+  },
   mainContent: {
     width: '100%',
     maxWidth: '1200px',
@@ -261,6 +299,7 @@ const styles = {
     flexDirection: 'column',
     gap: '20px',
     boxSizing: 'border-box',
+    flex: 1,
   },
   primaryBtn: {
     padding: '16px',
@@ -321,14 +360,6 @@ const styles = {
     fontSize: '14px',
     cursor: 'pointer',
   },
-  mapCard: {
-    position: 'relative',
-    zIndex: 1,
-    height: '400px',
-    borderRadius: '1px solid',
-    overflow: 'hidden',
-    background: '#fff',
-  },
   historyCard: {
     background: '#fff',
     borderRadius: '16px',
@@ -378,6 +409,7 @@ const styles = {
     fontWeight: '600',
     fontSize: '14px',
     boxSizing: 'border-box',
+    flexShrink: 0,
   },
   sidebarOverlay: {
     position: 'fixed',
@@ -396,7 +428,7 @@ const styles = {
     width: '85%',
     maxWidth: '300px',
     background: '#fff',
-    zIndex: 101,
+    zIndex: 102,
     display: 'flex',
     flexDirection: 'column',
     boxShadow: '2px 0 20px rgba(0,0,0,0.1)',

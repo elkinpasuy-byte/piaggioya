@@ -1,0 +1,186 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================================================
+    //  FUNCIONES AUXILIARES
+    // ============================================================
+    
+    // Verificar autenticación
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Obtener rol del usuario actual
+    function getRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    // Verificar si es administrador
+    function isAdmin() {
+      return isAuthenticated() && getRole() == 'admin';
+    }
+    
+    // Verificar si es conductor
+    function isDriver() {
+      return isAuthenticated() && getRole() == 'conductor';
+    }
+    
+    // Verificar si es cliente
+    function isClient() {
+      return isAuthenticated() && getRole() == 'cliente';
+    }
+    
+    // Verificar si el usuario es el propietario del documento
+    function isOwner(userIdField) {
+      return isAuthenticated() && request.resource.data[userIdField] == request.auth.uid;
+    }
+
+    // ============================================================
+    //  COLECCIÓN: users
+    // ============================================================
+    match /users/{userId} {
+      // Leer: cualquier usuario autenticado puede leer perfiles públicos
+      allow read: if isAuthenticated();
+      
+      // Crear: solo el propio usuario puede crear su perfil (en registro)
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Actualizar: el propio usuario o admin
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      
+      // Eliminar: solo admin
+      allow delete: if isAdmin();
+    }
+
+    // ============================================================
+    //  COLECCIÓN: shipments (envíos)
+    // ============================================================
+    match /shipments/{shipmentId} {
+      // Leer: 
+      // - Cliente: solo sus envíos (clientId == uid)
+      // - Conductor: solo envíos donde es driverId
+      // - Admin: todos
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        (isClient() && resource.data.clientId == request.auth.uid) ||
+        (isDriver() && resource.data.driverId == request.auth.uid)
+      );
+      
+      // Crear: solo clientes pueden crear envíos
+      allow create: if isAuthenticated() && isClient() && 
+        request.resource.data.clientId == request.auth.uid;
+      
+      // Actualizar:
+      // - Cliente: solo puede actualizar su envío si está en pending
+      // - Conductor: puede actualizar ubicación, estado y proponer precio
+      // - Admin: todo
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        (isClient() && 
+          resource.data.clientId == request.auth.uid && 
+          resource.data.status == 'pending') ||
+        (isDriver() && 
+          resource.data.driverId == request.auth.uid && 
+          (resource.data.status == 'accepted' || resource.data.status == 'in_progress'))
+      );
+      
+      // Eliminar: solo admin o cliente si está pending
+      allow delete: if isAuthenticated() && (
+        isAdmin() ||
+        (isClient() && 
+          resource.data.clientId == request.auth.uid && 
+          resource.data.status == 'pending')
+      );
+    }
+
+    // ============================================================
+    //  COLECCIÓN: messages (chats)
+    // ============================================================
+    match /messages/{messageId} {
+      // Leer: solo participantes del chat
+      allow read: if isAuthenticated() && 
+        request.auth.uid in resource.data.participants;
+      
+      // Crear: solo si el usuario es parte del chat
+      allow create: if isAuthenticated() && 
+        request.auth.uid in request.resource.data.participants;
+      
+      // Actualizar: solo el autor puede editar (por si se arrepiente)
+      allow update: if isAuthenticated() && 
+        request.auth.uid == resource.data.senderId;
+      
+      // Eliminar: solo admin
+      allow delete: if isAdmin();
+    }
+
+    // ============================================================
+    //  COLECCIÓN: ratings (calificaciones)
+    // ============================================================
+    match /ratings/{ratingId} {
+      // Leer: cualquier autenticado puede leer calificaciones
+      allow read: if isAuthenticated();
+      
+      // Crear: solo clientes pueden calificar
+      allow create: if isAuthenticated() && isClient() &&
+        request.resource.data.clientId == request.auth.uid;
+      
+      // Actualizar: solo el autor
+      allow update: if isAuthenticated() && 
+        request.auth.uid == resource.data.clientId;
+      
+      // Eliminar: solo admin o autor
+      allow delete: if isAuthenticated() && (
+        isAdmin() ||
+        request.auth.uid == resource.data.clientId
+      );
+    }
+
+    // ============================================================
+    //  COLECCIÓN: notifications (notificaciones)
+    // ============================================================
+    match /notifications/{notificationId} {
+      // Leer: solo el destinatario o admin
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        request.auth.uid == resource.data.userId
+      );
+      
+      // Crear: solo sistema o admin (no desde cliente)
+      allow create: if isAuthenticated() && (
+        isAdmin() ||
+        request.auth.uid == request.resource.data.userId
+      );
+      
+      // Actualizar: solo el destinatario (para marcar como leído)
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        request.auth.uid == resource.data.userId
+      );
+      
+      // Eliminar: solo admin o destinatario
+      allow delete: if isAuthenticated() && (
+        isAdmin() ||
+        request.auth.uid == resource.data.userId
+      );
+    }
+
+    // ============================================================
+    //  VALIDACIONES ADICIONALES (datos)
+    // ============================================================
+    
+    // Validar que los campos obligatorios estén presentes en shipments
+    match /shipments/{shipmentId} {
+      allow create: if request.resource.data.keys().hasAll([
+        'clientId', 'pickupAddress', 'deliveryAddress',
+        'pickupCoords', 'deliveryCoords', 'cargoType', 'cargoWeight'
+      ]);
+    }
+    
+    // Validar que las coordenadas tengan lat y lng
+    match /shipments/{shipmentId} {
+      allow create: if request.resource.data.pickupCoords.keys().hasAll(['lat', 'lng']) &&
+        request.resource.data.deliveryCoords.keys().hasAll(['lat', 'lng']);
+    }
+  }
+}

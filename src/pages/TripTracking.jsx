@@ -4,11 +4,11 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { useAuth } from '../contexts/AuthContext';
 import { updateShipmentStatus, updateDriverLocation } from '../services/shipmentService';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import 'leaflet/dist/leaflet.css';
 import { ChatModal } from '../components/ChatModal';
-
+import toast, { Toaster } from 'react-hot-toast';
 
 // ==================== ICONOS ====================
 const driverIcon = L.icon({
@@ -53,23 +53,16 @@ export const TripTracking = () => {
   const [deliveryReady, setDeliveryReady] = useState(false);
   const [proximityMessage, setProximityMessage] = useState('');
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [proposedPrice, setProposedPrice] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const watchIdRef = useRef(null);
   const unsubscribeRef = useRef(null);
-  const statusRef = useRef(tripStatus);
-  const shipmentRef = useRef(shipment);
 
   const isConductor = userData?.role === 'conductor';
   const isCliente = userData?.role === 'cliente';
 
-  useEffect(() => {
-    statusRef.current = tripStatus;
-  }, [tripStatus]);
-
-  useEffect(() => {
-    shipmentRef.current = shipment;
-  }, [shipment]);
-
+  // ===== CALCULAR DISTANCIA =====
   const calculateDistance = useCallback((lat1, lon1, lat2, lon2) => {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -81,11 +74,55 @@ export const TripTracking = () => {
     return R * c * 1000;
   }, []);
 
+  // ===== ACTUALIZAR PROXIMIDAD =====
   const updateProximity = useCallback((location, shipmentData, status) => {
+    // Si el viaje ya terminó o fue cancelado
+    if (status === 'delivered') {
+      setPickupReady(false);
+      setDeliveryReady(false);
+      setProximityMessage(isCliente 
+        ? '⭐ ¡Viaje completado! Califica a tu conductor.' 
+        : '💪 ¡Misión cumplida! Sos un crack. 🏆');
+      return;
+    }
+
+    if (status === 'cancelled') {
+      setPickupReady(false);
+      setDeliveryReady(false);
+      setProximityMessage('❌ Viaje cancelado');
+      console.log('🔍 CONDICIONES BOTONES:', {
+  isConductor,
+  isCliente,
+  tripStatus,
+  agreedPrice: shipment?.agreedPrice,
+  pickupReady,
+  deliveryReady
+});
+      return;
+    }
+
+    // Si no hay ubicación
     if (!location || !shipmentData) {
       setPickupReady(false);
       setDeliveryReady(false);
-      setProximityMessage('⏳ Esperando ubicación...');
+      setProximityMessage(isCliente 
+        ? '⏳ Esperando que el conductor comparta su ubicación...' 
+        : '⏳ Esperando ubicación...');
+      return;
+    }
+
+    // Solo calcular distancias si el estado es 'accepted' o 'in_progress'
+    if (status !== 'accepted' && status !== 'in_progress') {
+      setPickupReady(false);
+      setDeliveryReady(false);
+      // Mensajes específicos para negociación
+      if (status === 'assigned' || (status === 'accepted' && !shipmentData.agreedPrice)) {
+        setProximityMessage(isConductor 
+          ? '⚖️ Oferta enviada, esperando respuesta del cliente...' 
+          : '📋 Revisa la oferta del conductor y decide: Aceptar o Rechazar');
+      } else {
+        setProximityMessage('⚖️ Esperando confirmación...');
+      }
       return;
     }
 
@@ -103,6 +140,15 @@ export const TripTracking = () => {
     console.log('📏 Distancia a entrega:', Math.round(distanceToDelivery), 'm');
 
     if (status === 'accepted') {
+      // Mensaje para el cliente cuando el conductor está en camino
+      if (isCliente) {
+        setPickupReady(false);
+        setDeliveryReady(false);
+        setProximityMessage('✅ Conductor en camino hacia la recogida');
+        return;
+      }
+
+      // Conductor: mensajes de proximidad a recogida
       if (distanceToPickup <= 20 && distanceToPickup > 0) {
         setPickupReady(true);
         setProximityMessage('✅ Has llegado al punto de recogida.');
@@ -116,6 +162,15 @@ export const TripTracking = () => {
     }
 
     if (status === 'in_progress') {
+      // Mensaje para el cliente
+      if (isCliente) {
+        setPickupReady(false);
+        setDeliveryReady(false);
+        setProximityMessage('🚚 Tu carga está en camino hacia el destino');
+        return;
+      }
+
+      // Conductor: mensajes de proximidad a entrega
       if (distanceToDelivery <= 10 && distanceToDelivery > 0) {
         setDeliveryReady(true);
         setProximityMessage('✅ Has llegado al destino.');
@@ -127,8 +182,9 @@ export const TripTracking = () => {
         setProximityMessage(`📏 A ${Math.round(distanceToDelivery)} m del destino`);
       }
     }
-  }, [calculateDistance]);
+  }, [calculateDistance, isCliente, isConductor]);
 
+  // ===== SUSCRIPCIÓN EN TIEMPO REAL =====
   useEffect(() => {
     if (!shipmentIdFinal) return;
     if (unsubscribeRef.current) {
@@ -143,6 +199,9 @@ export const TripTracking = () => {
         if (docSnap.exists()) {
           const data = { id: docSnap.id, ...docSnap.data() };
           console.log('📦 Documento actualizado:', data);
+          if (data.agreedPrice) data.agreedPrice = Number(data.agreedPrice);
+          if (data.proposedPrice) data.proposedPrice = Number(data.proposedPrice);
+          if (data.estimatedPrice) data.estimatedPrice = Number(data.estimatedPrice);
           setShipment(data);
           setTripStatus(data.status || '');
           setError(null);
@@ -167,17 +226,17 @@ export const TripTracking = () => {
     };
   }, [shipmentIdFinal]);
 
+  // ===== EFECTO DE PROXIMIDAD =====
   useEffect(() => {
     const location = currentLocation || shipment?.driverLocation;
-    console.log('📍 Ubicación usada para proximidad:', location);
-    if (shipment && location) {
+    if (shipment) {
       updateProximity(location, shipment, tripStatus);
     }
   }, [shipment, tripStatus, currentLocation, updateProximity]);
 
+  // ===== GPS DEL CONDUCTOR =====
   useEffect(() => {
     if (!isConductor) {
-      console.log('⏳ No es conductor, GPS desactivado');
       return;
     }
 
@@ -189,22 +248,18 @@ export const TripTracking = () => {
     }
 
     if (!isActive) {
-      console.log('⏳ Viaje no activo, GPS detenido');
       return;
     }
 
     if (!navigator.geolocation) {
-      console.warn('⚠️ Geolocalización no soportada');
+      toast.error('⚠️ Geolocalización no soportada');
       return;
     }
-
-    console.log('📍 Iniciando GPS para conductor...');
 
     const watchId = navigator.geolocation.watchPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
         const location = { lat: latitude, lng: longitude };
-        console.log('📍 GPS actualizado:', latitude, longitude);
         setCurrentLocation(location);
         try {
           await updateDriverLocation(shipmentIdFinal, latitude, longitude);
@@ -215,7 +270,7 @@ export const TripTracking = () => {
       (error) => {
         console.error('❌ Error GPS:', error);
         if (error.code === 1) {
-          alert('⚠️ Permite el acceso a la ubicación en la configuración del navegador.');
+          toast.error('⚠️ Permite el acceso a la ubicación en la configuración del navegador.');
         }
       },
       {
@@ -234,6 +289,7 @@ export const TripTracking = () => {
     };
   }, [isConductor, tripStatus, shipmentIdFinal]);
 
+  // ===== CLEANUP FINAL =====
   useEffect(() => {
     return () => {
       if (unsubscribeRef.current) {
@@ -247,14 +303,15 @@ export const TripTracking = () => {
     };
   }, []);
 
+  // ===== HANDLERS =====
   const handleArrivedPickup = async () => {
     if (!pickupReady) return;
     const result = await updateShipmentStatus(shipmentIdFinal, 'in_progress');
     if (result.success) {
       setTripStatus('in_progress');
-      alert('✅ Carga recogida. ¡A entregar!');
+      toast.success('✅ Carga recogida. ¡A entregar!');
     } else {
-      alert('❌ Error: ' + result.error);
+      toast.error('❌ Error: ' + result.error);
     }
   };
 
@@ -263,13 +320,120 @@ export const TripTracking = () => {
     const result = await updateShipmentStatus(shipmentIdFinal, 'delivered');
     if (result.success) {
       setTripStatus('delivered');
-      alert('✅ Envío completado. ¡Gracias!');
-      navigate('/');
+      toast.success('✅ Mercancía entregada. ¡Gracias!');
+      if (isConductor) {
+        setTimeout(() => navigate('/driver/home'), 3000);
+      }
     } else {
-      alert('❌ Error: ' + result.error);
+      toast.error('❌ Error: ' + result.error);
     }
   };
 
+  // ===== PROPUESTA DE PRECIO =====
+  const handleProposePrice = async () => {
+    if (!proposedPrice || parseFloat(proposedPrice) <= 0) {
+      toast.error('Ingresa un valor válido');
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, 'shipments', shipmentIdFinal), {
+        proposedPrice: parseFloat(proposedPrice)
+      });
+      toast.success('✅ Propuesta enviada al cliente. Espera su confirmación.');
+      setProposedPrice('');
+    } catch (error) {
+      toast.error('❌ Error al enviar propuesta: ' + error.message);
+    }
+  };
+
+  // ===== ACEPTAR / RECHAZAR PROPUESTA =====
+  const handleAcceptPrice = async () => {
+    if (!shipment?.proposedPrice) return;
+    try {
+      await updateDoc(doc(db, 'shipments', shipmentIdFinal), {
+        agreedPrice: shipment.proposedPrice,
+        proposedPrice: null,
+        status: 'accepted'
+      });
+      toast.success('✅ Precio acordado: $' + shipment.proposedPrice.toLocaleString());
+    } catch (error) {
+      toast.error('❌ Error al aceptar: ' + error.message);
+    }
+  };
+
+  const handleRejectPrice = async () => {
+    try {
+      await updateDoc(doc(db, 'shipments', shipmentIdFinal), {
+        proposedPrice: null
+      });
+      toast.success('❌ Has rechazado la propuesta. El conductor podrá enviar otra.');
+    } catch (error) {
+      toast.error('❌ Error al rechazar: ' + error.message);
+    }
+  };
+
+  // ===== CANCELAR VIAJE =====
+  const handleCancelTrip = async () => {
+    if (!window.confirm('¿Estás seguro de cancelar este viaje?')) return;
+    
+    setIsCancelling(true);
+    try {
+      await updateDoc(doc(db, 'shipments', shipmentIdFinal), {
+        status: 'cancelled',
+        cancelledAt: new Date().toISOString(),
+        cancelledBy: userData?.role || 'unknown'
+      });
+      toast.success('❌ Viaje cancelado');
+      setTimeout(() => navigate('/'), 2000);
+    } catch (error) {
+      toast.error('❌ Error al cancelar: ' + error.message);
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  // ===== FUNCIÓN PARA MOSTRAR EL PRECIO =====
+  const getPriceDisplay = () => {
+    const { agreedPrice, proposedPrice, estimatedPrice } = shipment;
+    const agreed = Number(agreedPrice);
+    const proposed = Number(proposedPrice);
+    const estimated = Number(estimatedPrice);
+
+    if (agreed > 0) {
+      return <span style={styles.priceBadge('agreed')}>✅ ${agreed.toLocaleString()}</span>;
+    }
+
+    if (proposed > 0) {
+      return <span style={styles.priceBadge('proposed')}>⏳ Propuesta: ${proposed.toLocaleString()}</span>;
+    }
+
+    if (estimated > 0) {
+      return <span style={styles.priceBadge('estimated')}>💰 ${estimated.toLocaleString()}</span>;
+    }
+
+    return <span style={styles.priceBadge('none')}>⏳ Por acordar</span>;
+  };
+
+  // ===== FUNCIÓN PARA BADGE DE ESTADO =====
+  const getStatusBadge = () => {
+    switch (tripStatus) {
+      case 'accepted':
+        return shipment?.agreedPrice 
+          ? (isConductor ? '✅ Rumbo a la carga' : '✅ Conductor en camino')
+          : (isConductor ? '⚖️ Oferta enviada, esperando respuesta' : '📋 Revisa la oferta del conductor');
+      case 'in_progress':
+        return isConductor ? '🚚 Carga en ruta a destino' : '🚚 Tu carga está en camino';
+      case 'delivered':
+        return isConductor ? '🏁 ¡Viaje completado! Gracias.' : '🏁 ¡Entregado! Califica al conductor ⭐';
+      case 'cancelled':
+        return '❌ Viaje cancelado';
+      default:
+        return tripStatus;
+    }
+  };
+
+  // ===== RENDER =====
   if (loading) return <div style={styles.container}>Cargando viaje...</div>;
   if (error) return (
     <div style={styles.container}>
@@ -287,9 +451,26 @@ export const TripTracking = () => {
     ? [shipment.pickupCoords.lat, shipment.pickupCoords.lng]
     : [4.6097, -74.0817];
 
+  const canCancel = ['accepted', 'in_progress'].includes(tripStatus);
+
+  // ===== DEBUG BOTONES =====
+console.log("=== DEBUG BOTONES ===");
+console.log("Rol:", userData?.role);
+console.log("isCliente:", isCliente);
+console.log("tripStatus:", tripStatus);
+console.log("proposedPrice:", shipment?.proposedPrice);
+console.log("agreedPrice:", shipment?.agreedPrice);
+
   return (
     <div style={styles.container}>
-      <MapContainer center={mapCenter} zoom={14} style={{ height: '100%', width: '100%' }}>
+      <Toaster position="top-center" />
+      
+      <MapContainer 
+        center={mapCenter} 
+        zoom={14} 
+        style={{ height: '55%', width: '100%' }}
+        zoomControl={true}
+      >
         <TileLayer attribution='&copy; OpenStreetMap' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         {shipment.pickupCoords && (
           <Marker position={[shipment.pickupCoords.lat, shipment.pickupCoords.lng]} icon={clientIcon}>
@@ -308,93 +489,131 @@ export const TripTracking = () => {
         )}
       </MapContainer>
 
+<h1
+  style={{
+    position: 'fixed',
+    top: 20,
+    left: 20,
+    zIndex: 999999,
+    background: 'red',
+    color: 'white',
+    fontSize: 40
+  }}
+>
+PRUEBA 123
+</h1>
       <div style={styles.panel}>
-        <div style={styles.statusBadge}>
-          {tripStatus === 'accepted' && '✅ En camino a la recogida'}
-          {tripStatus === 'in_progress' && '🚀 En viaje al destino'}
-          {tripStatus === 'delivered' && '🏁 Viaje completado'}
-        </div>
-
-        {proximityMessage && (
-          <div style={styles.proximityMessage(proximityMessage.includes('✅'))}>
-            {proximityMessage}
+        <div style={styles.infoContainer}>
+          <div style={styles.statusBadge}>
+            {getStatusBadge()}
           </div>
-        )}
 
-        <div style={styles.cargoInfo}>📦 {shipment.cargoType} - {shipment.cargoWeight} kg</div>
+          {proximityMessage && (
+            <div style={styles.proximityMessage(proximityMessage.includes('✅') || proximityMessage.includes('⭐'))}>
+              {proximityMessage}
+            </div>
+          )}
 
-        <div style={styles.info}>
-          <div style={styles.infoRow}><span>🚚 Conductor:</span><span>{shipment.driverName || 'Sin conductor'}</span></div>
-          <div style={styles.infoRow}><span>📞 Contacto:</span><span>{shipment.driverPhone || '---'}</span></div>
-          <div style={styles.infoRow}><span>💰 Precio:</span><span style={styles.price}>{new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(shipment.estimatedPrice)}</span></div>
+          <div style={styles.cargoInfo}>📦 {shipment.cargoType} - {shipment.cargoWeight} kg</div>
+
+          <div style={styles.info}>
+            <div style={styles.infoRow}>
+              <span>📍 Recogida:</span>
+              <span>{shipment.pickupAddress}</span>
+            </div>
+            <div style={styles.infoRow}>
+              <span>🏁 Entrega:</span>
+              <span>{shipment.deliveryAddress}</span>
+            </div>
+            <div style={styles.infoRow}>
+              <span>🚚 Conductor:</span>
+              <span>{shipment.driverName || 'Sin conductor'}</span>
+            </div>
+            <div style={styles.infoRow}>
+              <span>💰 Precio:</span>
+              <span>{getPriceDisplay()}</span>
+            </div>
+          </div>
+
+          {/* ===== CONDUCTOR: PROPONER PRECIO ===== */}
+          {isConductor && tripStatus === 'accepted' && !shipment.agreedPrice && !shipment.proposedPrice && (
+            <div style={styles.priceSection}>
+              <div style={styles.priceLabel}>💰 Propón un precio para el flete</div>
+              <div style={styles.priceInputGroup}>
+                <input
+                  type="number"
+                  placeholder="Ingresa el valor en COP"
+                  value={proposedPrice}
+                  onChange={(e) => setProposedPrice(e.target.value)}
+                  style={styles.priceInput}
+                />
+                <button
+                  onClick={handleProposePrice}
+                  disabled={!proposedPrice || parseFloat(proposedPrice) <= 0}
+                  style={styles.priceButton}
+                >
+                  Enviar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ===== CLIENTE: ACEPTAR/RECHAZAR PROPUESTA ===== */}
+          {true && (
+  <div style={styles.proposalBox}>
+    <p style={styles.proposalText}>
+      El conductor propone:
+      <strong>${Number(shipment.proposedPrice).toLocaleString()}</strong>
+    </p>
+
+    <div style={styles.proposalActions}>
+      <button onClick={handleAcceptPrice} style={styles.acceptButton}>
+        ✅ Aceptar
+      </button>
+
+      <button onClick={handleRejectPrice} style={styles.rejectButton}>
+        ❌ Rechazar
+      </button>
+    </div>
+  </div>
+)}
         </div>
 
-        {isConductor && tripStatus === 'accepted' && (
-          <button onClick={handleArrivedPickup} disabled={!pickupReady} style={styles.pickupButton(pickupReady)}>
-            📦 Recoger mercancía {pickupReady ? '✅' : '🔒'}
-          </button>
-        )}
-
-        {isConductor && tripStatus === 'in_progress' && (
-          <button onClick={handleArrivedDelivery} disabled={!deliveryReady} style={styles.deliveryButton(deliveryReady)}>
-            🏁 Entregar mercancía {deliveryReady ? '✅' : '🔒'}
-          </button>
-        )}
-
-        <div style={styles.actions}>
-          {isConductor && (tripStatus === 'accepted' || tripStatus === 'in_progress') && (
-            <button
-              onClick={() => setIsChatOpen(true)}
-              style={{
-                flex: 1,
-                padding: '12px',
-                background: '#25D366',
-                color: 'white',
-                border: 'none',
-                borderRadius: '12px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-              }}
-            >
-              💬 Chat con el cliente
+        {/* ===== CONTENEDOR DE ACCIONES ===== */}
+        <div style={styles.actionsContainer}>
+          {isConductor && tripStatus === 'accepted' && shipment.agreedPrice && (
+            <button onClick={handleArrivedPickup} disabled={!pickupReady} style={styles.pickupButton(pickupReady)}>
+              📦 Recoger {pickupReady ? '✅' : '🔒'}
             </button>
           )}
 
-          {isCliente && (tripStatus === 'accepted' || tripStatus === 'in_progress') && (
-            <button
-              onClick={() => setIsChatOpen(true)}
-              style={{
-                flex: 1,
-                padding: '12px',
-                background: '#25D366',
-                color: 'white',
-                border: 'none',
-                borderRadius: '12px',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-              }}
-            >
-              💬 Chat con el conductor
+          {isConductor && tripStatus === 'in_progress' && (
+            <button onClick={handleArrivedDelivery} disabled={!deliveryReady} style={styles.deliveryButton(deliveryReady)}>
+              🏁 Entregar {deliveryReady ? '✅' : '🔒'}
             </button>
           )}
 
-          <button onClick={() => navigate('/')} style={styles.backButton}>
-            ← Volver al mapa
-          </button>
+          <div style={styles.secondaryActions}>
+            {(isConductor || isCliente) && (tripStatus === 'accepted' || tripStatus === 'in_progress') && (
+              <button onClick={() => setIsChatOpen(true)} style={styles.chatButton}>
+                💬
+              </button>
+            )}
+
+            {canCancel && (
+              <button onClick={handleCancelTrip} disabled={isCancelling} style={styles.cancelButton}>
+                {isCancelling ? '...' : '❌'}
+              </button>
+            )}
+
+            <button onClick={() => navigate('/')} style={styles.backButton}>
+              ←
+            </button>
+          </div>
 
           {isCliente && tripStatus === 'delivered' && (
             <button onClick={() => navigate(`/rate-driver/${shipmentIdFinal}`)} style={styles.rateButton}>
-              ⭐ Calificar viaje
+              ⭐ Calificar
             </button>
           )}
         </div>
@@ -411,18 +630,247 @@ export const TripTracking = () => {
 };
 
 const styles = {
-  container: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
-  panel: { position: 'fixed', bottom: 0, left: 0, right: 0, background: 'white', borderRadius: '20px 20px 0 0', padding: '16px 20px', boxShadow: '0 -4px 20px rgba(0,0,0,0.1)', zIndex: 1000, maxHeight: '60vh', overflowY: 'auto' },
-  statusBadge: { textAlign: 'center', padding: '8px', borderRadius: '12px', background: '#e3f2fd', color: '#1565c0', fontWeight: '600', fontSize: '14px', marginBottom: '12px' },
-  proximityMessage: (isSuccess) => ({ textAlign: 'center', padding: '8px', marginBottom: '12px', borderRadius: '8px', background: isSuccess ? '#e8f5e9' : '#fff3cd', color: isSuccess ? '#2e7d32' : '#856404', fontWeight: '500', fontSize: '14px' }),
+  container: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    background: '#f5f5f5'
+  },
+
+  // ===== PANEL PRINCIPAL =====
+  panel: {
+    position: 'fixed',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    background: 'white',
+    borderRadius: '20px 20px 0 0',
+    boxShadow: '0 -8px 30px rgba(0,0,0,0.12)',
+    zIndex: 1000,
+    // 🔥 NUEVA CONFIGURACIÓN PARA MÓVIL
+    height: 'auto',
+    maxHeight: '90vh',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    padding: '16px 16px 0 16px',
+    // Para iPhone safe area
+    paddingBottom: 'env(safe-area-inset-bottom)',
+  },
+
+  // ===== CONTENIDO SCROLLABLE =====
+  infoContainer: {
+    flex: '1 1 auto',
+    minHeight: 0,          // ← necesario para scroll en flex
+    overflowY: 'auto',
+    paddingBottom: '12px',
+    // Para que no se solape con la barra inferior
+    marginBottom: '4px',
+  },
+
+  // ===== BOTONES SIEMPRE VISIBLES =====
+actionsContainer: {
+  flexShrink: 0,
+  paddingTop: '12px',
+  paddingBottom: '12px',
+  borderTop: '1px solid #f0f0f0',
+  background: 'white',
+  position: 'relative',
+  zIndex: 9999,           // ← MUY ALTO
+  display: 'block !important',
+  opacity: '1 !important',
+  height: 'auto !important',
+  minHeight: '60px',      // ← ALTURA MÍNIMA
+  overflow: 'visible !important',
+  // Borde rojo temporal para ver si aparece
+  border: '3px solid red',
+},
+
+  // ===== RESTO DE ESTILOS (SIN CAMBIOS) =====
+  statusBadge: {
+    textAlign: 'center',
+    padding: '8px',
+    borderRadius: '12px',
+    background: '#e3f2fd',
+    color: '#1565c0',
+    fontWeight: '600',
+    fontSize: '14px',
+    marginBottom: '12px'
+  },
+  proximityMessage: (isSuccess) => ({
+    textAlign: 'center',
+    padding: '8px',
+    marginBottom: '12px',
+    borderRadius: '8px',
+    background: isSuccess ? '#e8f5e9' : '#fff3cd',
+    color: isSuccess ? '#2e7d32' : '#856404',
+    fontWeight: '500',
+    fontSize: '14px'
+  }),
   cargoInfo: { fontSize: '16px', fontWeight: '600', marginBottom: '8px', textAlign: 'center' },
-  info: { marginBottom: '16px' },
-  infoRow: { display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', borderBottom: '1px solid #eee' },
-  price: { fontWeight: '600', color: '#4CAF50' },
-  pickupButton: (ready) => ({ width: '100%', padding: '12px', background: ready ? '#007bff' : '#6c757d', color: 'white', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: '600', cursor: ready ? 'pointer' : 'not-allowed', marginBottom: '8px', opacity: ready ? 1 : 0.6 }),
-  deliveryButton: (ready) => ({ width: '100%', padding: '12px', background: ready ? '#28a745' : '#6c757d', color: 'white', border: 'none', borderRadius: '12px', fontSize: '16px', fontWeight: '600', cursor: ready ? 'pointer' : 'not-allowed', marginBottom: '8px', opacity: ready ? 1 : 0.6 }),
-  actions: { display: 'flex', gap: '12px', flexWrap: 'wrap' },
-  backButton: { flex: 1, padding: '12px', background: '#667eea', color: 'white', border: 'none', borderRadius: '12px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
-  rateButton: { flex: 1, padding: '12px', background: '#ffc107', color: '#333', border: 'none', borderRadius: '12px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
+  info: { marginBottom: '12px' },
+  infoRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    padding: '8px 0',
+    fontSize: '14px',
+    borderBottom: '1px solid #f0f0f0',
+    alignItems: 'center'
+  },
+  priceBadge: (type) => ({
+    display: 'inline-block',
+    padding: '4px 12px',
+    borderRadius: '20px',
+    fontSize: '14px',
+    fontWeight: '600',
+    background: type === 'agreed' ? '#d4edda' :
+                type === 'proposed' ? '#fff3cd' :
+                type === 'estimated' ? '#e3f2fd' : '#f8f9fa',
+    color: type === 'agreed' ? '#155724' :
+           type === 'proposed' ? '#856404' :
+           type === 'estimated' ? '#0c5460' : '#6c757d',
+    border: `1px solid ${type === 'agreed' ? '#c3e6cb' :
+                           type === 'proposed' ? '#ffe8a1' :
+                           type === 'estimated' ? '#b8daff' : '#dee2e6'}`
+  }),
+  priceSection: { marginBottom: '12px', padding: '12px', background: '#f8f9ff', borderRadius: '12px' },
+  priceLabel: { fontSize: '14px', fontWeight: '600', marginBottom: '8px', color: '#1a1a2e' },
+  priceInputGroup: { display: 'flex', gap: '8px' },
+  priceInput: { flex: 1, padding: '10px 14px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' },
+  priceButton: {
+    padding: '10px 20px',
+    background: '#667eea',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: '600',
+    cursor: 'pointer'
+  },
+  proposalBox: {
+    marginBottom: '12px',
+    padding: '16px',
+    background: '#fff3cd',
+    borderRadius: '12px',
+    border: '1px solid #ffe8a1'
+  },
+  proposalText: {
+    fontSize: '15px',
+    marginBottom: '12px',
+    textAlign: 'center',
+    color: '#856404'
+  },
+  proposalActions: {
+    display: 'flex',
+    gap: '12px',
+    justifyContent: 'center'
+  },
+  acceptButton: {
+    padding: '10px 24px',
+    background: '#28a745',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    flex: 1
+  },
+  rejectButton: {
+    padding: '10px 24px',
+    background: '#dc3545',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: '14px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    flex: 1
+  },
+  pickupButton: (ready) => ({
+    width: '100%',
+    padding: '12px',
+    background: ready ? '#007bff' : '#6c757d',
+    color: 'white',
+    border: 'none',
+    borderRadius: '12px',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: ready ? 'pointer' : 'not-allowed',
+    opacity: ready ? 1 : 0.6
+  }),
+  deliveryButton: (ready) => ({
+    width: '100%',
+    padding: '12px',
+    background: ready ? '#28a745' : '#6c757d',
+    color: 'white',
+    border: 'none',
+    borderRadius: '12px',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: ready ? 'pointer' : 'not-allowed',
+    opacity: ready ? 1 : 0.6
+  }),
+  secondaryActions: {
+    display: 'flex',
+    gap: '8px',
+    marginTop: '8px',
+    justifyContent: 'space-between'
+  },
+  chatButton: {
+    padding: '10px 16px',
+    background: '#25D366',
+    color: 'white',
+    border: 'none',
+    borderRadius: '10px',
+    fontSize: '18px',
+    cursor: 'pointer',
+    flex: 1,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  cancelButton: {
+    padding: '10px 16px',
+    background: '#dc3545',
+    color: 'white',
+    border: 'none',
+    borderRadius: '10px',
+    fontSize: '18px',
+    cursor: 'pointer',
+    flex: 1,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  backButton: {
+    padding: '10px 16px',
+    background: '#667eea',
+    color: 'white',
+    border: 'none',
+    borderRadius: '10px',
+    fontSize: '18px',
+    cursor: 'pointer',
+    flex: 1,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  rateButton: {
+    width: '100%',
+    padding: '12px',
+    background: '#ffc107',
+    color: '#333',
+    border: 'none',
+    borderRadius: '12px',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    marginTop: '8px'
+  },
   button: { padding: '12px 24px', background: '#667eea', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer' }
 };

@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { createShipment } from '../../services/shipmentService';
 import { useGeolocation } from '../../hooks/useGeolocation';
 import { geocodeShipmentAddresses, geocodeAddress } from '../../services/geocodingService';
+
 export const ClientRequest = () => {
   const { userData } = useAuth();
   const navigate = useNavigate();
@@ -18,15 +19,12 @@ export const ClientRequest = () => {
   const [cargoWeight, setCargoWeight] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
-  // Estado para saber si usó ubicación actual
   const [usingCurrentLocation, setUsingCurrentLocation] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     
-    // Validaciones
     if (!pickupAddress && !usingCurrentLocation) {
       setError('Ingresa la dirección de recogida o usa tu ubicación actual');
       return;
@@ -49,13 +47,10 @@ export const ClientRequest = () => {
     let pickupCoords = null;
     let finalPickupAddress = pickupAddress;
     
-    // CASO 1: Usar ubicación actual del GPS
     if (usingCurrentLocation && userLocation) {
       pickupCoords = { lat: userLocation.lat, lng: userLocation.lng };
       finalPickupAddress = `Mi ubicación actual (${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)})`;
-    } 
-    // CASO 2: Geocodificar dirección escrita
-    else if (pickupAddress) {
+    } else if (pickupAddress) {
       const geocodeResult = await geocodeShipmentAddresses(pickupAddress, deliveryAddress);
       
       if (!geocodeResult.pickupCoords) {
@@ -73,9 +68,8 @@ export const ClientRequest = () => {
       pickupCoords = geocodeResult.pickupCoords;
       const deliveryCoords = geocodeResult.deliveryCoords;
       
-      // Crear envío con ambas coordenadas
       const result = await createShipment({
-        clientId: userData?.email,
+        clientId: userData?.uid, // ← CAMBIADO: uid en lugar de email
         clientName: userData?.nombre,
         clientPhone: userData?.telefono,
         pickupAddress: finalPickupAddress,
@@ -98,9 +92,7 @@ export const ClientRequest = () => {
       return;
     }
     
-    // Si llegamos aquí, es porque usó ubicación actual (falta geocodificar destino)
     if (usingCurrentLocation) {
-      // Solo geocodificar la dirección de entrega
       const deliveryCoords = await geocodeAddress(deliveryAddress);
       
       if (!deliveryCoords) {
@@ -110,7 +102,7 @@ export const ClientRequest = () => {
       }
       
       const result = await createShipment({
-        clientId: userData?.email,
+        clientId: userData?.uid, // ← CAMBIADO: uid en lugar de email
         clientName: userData?.nombre,
         clientPhone: userData?.telefono,
         pickupAddress: finalPickupAddress,
@@ -167,7 +159,6 @@ export const ClientRequest = () => {
       </div>
 
       <form onSubmit={handleSubmit} style={styles.form}>
-        {/* Dirección de recogida */}
         <div style={styles.section}>
           <h2 style={styles.sectionTitle}>📍 Punto de recogida</h2>
           
@@ -199,10 +190,8 @@ export const ClientRequest = () => {
           </button>
         </div>
 
-        {/* Dirección de entrega */}
         <div style={styles.section}>
           <h2 style={styles.sectionTitle}>🏁 Punto de entrega</h2>
-          
           <input
             type="text"
             placeholder="Ej: Carrera 45, Pasto"
@@ -213,7 +202,6 @@ export const ClientRequest = () => {
           />
         </div>
 
-        {/* Información de la carga */}
         <div style={styles.section}>
           <h2 style={styles.sectionTitle}>📦 Información de la carga</h2>
           

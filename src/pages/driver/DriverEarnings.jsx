@@ -12,7 +12,7 @@ export const DriverEarnings = () => {
   const [shipments, setShipments] = useState([]);
   const [filteredShipments, setFilteredShipments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState('all'); // all, week, month
+  const [period, setPeriod] = useState('all');
   const [stats, setStats] = useState({
     totalEarned: 0,
     totalDeliveries: 0,
@@ -22,7 +22,7 @@ export const DriverEarnings = () => {
   });
 
   useEffect(() => {
-    if (userData?.email) {
+    if (userData?.uid) {
       loadShipments();
     }
   }, [userData]);
@@ -30,16 +30,31 @@ export const DriverEarnings = () => {
   const loadShipments = async () => {
     setLoading(true);
     try {
-      const q = query(
+      // 🔥 INTENTAR CON UID PRIMERO
+      let q = query(
         collection(db, 'shipments'),
-        where('driverId', '==', userData.email),
+        where('driverId', '==', userData.uid),
         where('status', '==', 'delivered')
       );
-      const snapshot = await getDocs(q);
-      const list = [];
+      let snapshot = await getDocs(q);
+      let list = [];
       snapshot.forEach(doc => {
         list.push({ id: doc.id, ...doc.data() });
       });
+
+      // 🔥 SI NO ENCUENTRA CON UID, INTENTAR CON EMAIL (FALLBACK)
+      if (list.length === 0 && userData?.email) {
+        q = query(
+          collection(db, 'shipments'),
+          where('driverId', '==', userData.email),
+          where('status', '==', 'delivered')
+        );
+        snapshot = await getDocs(q);
+        snapshot.forEach(doc => {
+          list.push({ id: doc.id, ...doc.data() });
+        });
+      }
+
       setShipments(list);
       applyFilter(list, period);
       calculateStats(list);
@@ -80,7 +95,8 @@ export const DriverEarnings = () => {
     const dayTotals = {};
 
     data.forEach(s => {
-      const price = s.estimatedPrice || 0;
+      // 🔥 USAR agreedPrice (o estimatedPrice como fallback)
+      const price = s.agreedPrice || s.estimatedPrice || 0;
       total += price;
       count++;
 
@@ -206,28 +222,31 @@ export const DriverEarnings = () => {
         </div>
       ) : (
         <div style={styles.list}>
-          {filteredShipments.map((s, index) => (
-            <div key={index} style={styles.card}>
-              <div style={styles.cardHeader}>
-                <span style={styles.cardId}>#{s.id?.slice(-6) || 'N/A'}</span>
-                <span style={styles.cardDate}>{formatDate(s.createdAt)}</span>
+          {filteredShipments.map((s, index) => {
+            const displayPrice = s.agreedPrice || s.estimatedPrice || 0;
+            return (
+              <div key={index} style={styles.card}>
+                <div style={styles.cardHeader}>
+                  <span style={styles.cardId}>#{s.id?.slice(-6) || 'N/A'}</span>
+                  <span style={styles.cardDate}>{formatDate(s.createdAt)}</span>
+                </div>
+                <div style={styles.cardDetails}>
+                  <div>
+                    <div style={styles.cardLabel}>Recogida</div>
+                    <div style={styles.cardValue}>{s.pickupAddress || 'N/A'}</div>
+                  </div>
+                  <div>
+                    <div style={styles.cardLabel}>Entrega</div>
+                    <div style={styles.cardValue}>{s.deliveryAddress || 'N/A'}</div>
+                  </div>
+                  <div>
+                    <div style={styles.cardLabel}>Monto</div>
+                    <div style={styles.cardPrice}>{formatPrice(displayPrice)}</div>
+                  </div>
+                </div>
               </div>
-              <div style={styles.cardDetails}>
-                <div>
-                  <div style={styles.cardLabel}>Recogida</div>
-                  <div style={styles.cardValue}>{s.pickupAddress || 'N/A'}</div>
-                </div>
-                <div>
-                  <div style={styles.cardLabel}>Entrega</div>
-                  <div style={styles.cardValue}>{s.deliveryAddress || 'N/A'}</div>
-                </div>
-                <div>
-                  <div style={styles.cardLabel}>Monto</div>
-                  <div style={styles.cardPrice}>{formatPrice(s.estimatedPrice)}</div>
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

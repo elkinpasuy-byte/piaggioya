@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { getPendingShipments, acceptShipment } from '../services/shipmentService';
+import { getPendingShipments, makeOffer } from '../../services/shipmentService';
 
-export const DriverTrips = () => {
+export const AvailableShipments = () => {
   const { userData } = useAuth();
   const navigate = useNavigate();
-  const [pendingShipments, setPendingShipments] = useState([]);
+  const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [acceptingId, setAcceptingId] = useState(null);
   const [error, setError] = useState(null);
+  const [offeringId, setOfferingId] = useState(null);
+  const [offerPrice, setOfferPrice] = useState({});
 
   useEffect(() => {
     loadShipments();
@@ -19,7 +20,9 @@ export const DriverTrips = () => {
     setLoading(true);
     const result = await getPendingShipments();
     if (result.success) {
-      setPendingShipments(result.data);
+      // Filtrar envíos que no tengan conductor asignado
+      const available = result.data.filter(s => !s.driverId);
+      setShipments(available);
       setError(null);
     } else {
       setError(result.error);
@@ -27,21 +30,29 @@ export const DriverTrips = () => {
     setLoading(false);
   };
 
-  const handleAcceptShipment = async (shipmentId) => {
-    setAcceptingId(shipmentId);
-    const result = await acceptShipment(
-      shipmentId,
-      userData?.uid,      // ← CAMBIADO: uid en lugar de email
-      userData?.nombre,
-      userData?.telefono
-    );
+  const handleMakeOffer = async (shipmentId) => {
+    const price = offerPrice[shipmentId];
+    if (!price || parseFloat(price) <= 0) {
+      alert('Ingresa un valor válido');
+      return;
+    }
+
+    setOfferingId(shipmentId);
+    const result = await makeOffer(shipmentId, {
+      driverId: userData.uid,
+      driverName: userData.nombre,
+      driverPhone: userData.telefono,
+      proposedPrice: parseFloat(price)
+    });
     
     if (result.success) {
-      navigate(`/driver/trip/${shipmentId}`);
+      alert('✅ Oferta enviada. Espera la respuesta del cliente.');
+      setOfferPrice(prev => ({ ...prev, [shipmentId]: '' }));
+      loadShipments(); // Recargar lista
     } else {
       alert('❌ Error: ' + result.error);
     }
-    setAcceptingId(null);
+    setOfferingId(null);
   };
 
   const formatPrice = (price) => {
@@ -52,7 +63,7 @@ export const DriverTrips = () => {
     }).format(price);
   };
 
-  if (!userData || (userData.role !== 'conductor' && userData.role !== 'conductor_pendiente')) {
+  if (!userData || userData.role !== 'conductor') {
     return (
       <div style={styles.container}>
         <div style={styles.card}>
@@ -66,28 +77,13 @@ export const DriverTrips = () => {
     );
   }
 
-  if (userData.role === 'conductor_pendiente') {
-    return (
-      <div style={styles.container}>
-        <div style={styles.card}>
-          <h2>⏳ Cuenta pendiente de verificación</h2>
-          <p>Tus documentos están siendo revisados por el administrador.</p>
-          <p>Podrás aceptar envíos cuando tu cuenta sea aprobada.</p>
-          <button onClick={() => navigate('/')} style={styles.backButton}>
-            Volver al mapa
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <button onClick={() => navigate('/')} style={styles.backButton}>
+        <button onClick={() => navigate('/driver/home')} style={styles.backButton}>
           ← Volver al mapa
         </button>
-        <h1 style={styles.title}>📦 Cargas disponibles</h1>
+        <h1 style={styles.title}>📦 Envíos disponibles</h1>
         <button onClick={loadShipments} style={styles.refreshButton}>
           🔄
         </button>
@@ -102,19 +98,19 @@ export const DriverTrips = () => {
 
       {loading ? (
         <div style={styles.loading}>Cargando envíos...</div>
-      ) : pendingShipments.length === 0 ? (
+      ) : shipments.length === 0 ? (
         <div style={styles.empty}>
           <div style={styles.emptyIcon}>📭</div>
-          <div style={styles.emptyText}>No hay cargas pendientes</div>
-          <div style={styles.emptySub}>Las cargas aparecerán aquí cuando los clientes las soliciten</div>
+          <div style={styles.emptyText}>No hay envíos disponibles</div>
+          <div style={styles.emptySub}>Los envíos aparecerán aquí cuando los clientes los soliciten</div>
         </div>
       ) : (
         <div style={styles.list}>
-          {pendingShipments.map((shipment) => (
+          {shipments.map((shipment) => (
             <div key={shipment.id} style={styles.card}>
               <div style={styles.cardHeader}>
                 <span style={styles.tripId}>#{shipment.id.slice(-6)}</span>
-                <span style={styles.badge}>🕐 Pendiente</span>
+                <span style={styles.badge}>🕐 Disponible</span>
                 <span style={styles.time}>
                   {shipment.createdAt?.toDate?.() 
                     ? new Date(shipment.createdAt.toDate()).toLocaleTimeString()
@@ -149,14 +145,29 @@ export const DriverTrips = () => {
                   <span style={styles.price}>{formatPrice(shipment.estimatedPrice || 0)}</span>
                 </div>
               </div>
-              
-              <button
-                onClick={() => handleAcceptShipment(shipment.id)}
-                disabled={acceptingId === shipment.id}
-                style={styles.acceptButton}
-              >
-                {acceptingId === shipment.id ? 'Aceptando...' : '✅ Aceptar envío'}
-              </button>
+
+              <div style={styles.offerSection}>
+                <div style={styles.offerInputGroup}>
+                  <input
+                    type="number"
+                    placeholder="Tu oferta (COP)"
+                    value={offerPrice[shipment.id] || ''}
+                    onChange={(e) => setOfferPrice(prev => ({ ...prev, [shipment.id]: e.target.value }))}
+                    style={styles.offerInput}
+                    disabled={offeringId === shipment.id}
+                  />
+                  <button
+                    onClick={() => handleMakeOffer(shipment.id)}
+                    disabled={offeringId === shipment.id || !offerPrice[shipment.id]}
+                    style={styles.offerButton}
+                  >
+                    {offeringId === shipment.id ? 'Enviando...' : '💰 Ofertar'}
+                  </button>
+                </div>
+                <div style={styles.offerInfo}>
+                  Las ofertas se envían al cliente, quien decidirá cuál aceptar.
+                </div>
+              </div>
             </div>
           ))}
         </div>
@@ -269,8 +280,8 @@ const styles = {
     color: '#888'
   },
   badge: {
-    background: '#fff3cd',
-    color: '#856404',
+    background: '#d4edda',
+    color: '#155724',
     padding: '4px 8px',
     borderRadius: '12px',
     fontSize: '11px',
@@ -314,7 +325,7 @@ const styles = {
     flex: 1
   },
   details: {
-    marginBottom: '16px',
+    marginBottom: '12px',
     padding: '8px 0',
     borderTop: '1px solid #eee',
     borderBottom: '1px solid #eee'
@@ -330,16 +341,36 @@ const styles = {
     fontWeight: '600',
     color: '#28a745'
   },
-  acceptButton: {
-    width: '100%',
+  offerSection: {
+    marginTop: '12px',
     padding: '12px',
-    background: 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)',
+    background: '#f8f9fa',
+    borderRadius: '8px'
+  },
+  offerInputGroup: {
+    display: 'flex',
+    gap: '8px',
+    marginBottom: '6px'
+  },
+  offerInput: {
+    flex: 1,
+    padding: '8px 12px',
+    border: '1px solid #ddd',
+    borderRadius: '6px',
+    fontSize: '14px'
+  },
+  offerButton: {
+    padding: '8px 16px',
+    background: '#28a745',
     color: 'white',
     border: 'none',
-    borderRadius: '12px',
-    fontSize: '14px',
+    borderRadius: '6px',
     fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'transform 0.2s'
+    cursor: 'pointer'
+  },
+  offerInfo: {
+    fontSize: '11px',
+    color: '#888',
+    textAlign: 'center'
   }
 };

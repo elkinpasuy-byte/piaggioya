@@ -1,10 +1,8 @@
-// src/pages/ClientTrips.jsx
-// Historial de envíos del cliente con estado y calificación
-
+// src/pages/client/ClientTrips.jsx
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { getClientShipments, updateShipmentStatus, rateShipment, updateDriverAverageRating, getShipmentById } from '../../services/shipmentService';
 import { useNavigate } from 'react-router-dom';
+import { getClientShipments } from '../../services/shipmentService';
 
 export const ClientTrips = () => {
   const { userData } = useAuth();
@@ -12,21 +10,15 @@ export const ClientTrips = () => {
   const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filter, setFilter] = useState('todos');
-  const [ratingModal, setRatingModal] = useState({ open: false, shipmentId: null });
-  const [ratingValue, setRatingValue] = useState(0);
-  const [ratingComment, setRatingComment] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (userData?.email) {
-      loadShipments();
-    }
-  }, [userData]);
+    loadShipments();
+  }, []);
 
   const loadShipments = async () => {
+    if (!userData?.uid) return;
     setLoading(true);
-    const result = await getClientShipments(userData.email);
+    const result = await getClientShipments(userData.uid);
     if (result.success) {
       setShipments(result.data);
       setError(null);
@@ -36,208 +28,331 @@ export const ClientTrips = () => {
     setLoading(false);
   };
 
-  const handleCancelShipment = async (shipmentId) => {
-    if (!window.confirm('¿Cancelar este envío?')) return;
-    const result = await updateShipmentStatus(shipmentId, 'cancelled');
-    if (result.success) {
-      await loadShipments();
-      alert('✅ Envío cancelado');
-    } else {
-      alert('❌ Error: ' + result.error);
-    }
+  const formatPrice = (price) => {
+    if (!price) return 'No definido';
+    return new Intl.NumberFormat('es-CO', {
+      style: 'currency',
+      currency: 'COP',
+      minimumFractionDigits: 0
+    }).format(price);
   };
 
-  const openRatingModal = (shipmentId) => {
-    setRatingModal({ open: true, shipmentId });
-    setRatingValue(0);
-    setRatingComment('');
-  };
-
-  const submitRating = async () => {
-    if (ratingValue === 0) {
-      alert('Selecciona una calificación');
-      return;
-    }
-    setSubmitting(true);
-    const result = await rateShipment(ratingModal.shipmentId, ratingValue, ratingComment);
-    if (result.success) {
-      await loadShipments();
-      setRatingModal({ open: false, shipmentId: null });
-      alert('✅ ¡Gracias por calificar!');
-    } else {
-      alert('❌ Error: ' + result.error);
-    }
-    setSubmitting(false);
-  };
-
-  const getStatusText = (status) => {
-    const map = {
-      'pending': '🕐 Pendiente',
-      'accepted': '✅ Aceptado',
-      'loaded': '🚚 En camino',
-      'delivered': '🏁 Entregado',
-      'cancelled': '❌ Cancelado'
+  const getStatusLabel = (status) => {
+    const statusMap = {
+      pending: '🕐 Pendiente',
+      accepted: '✅ Aceptado',
+      in_progress: '🚚 En ruta',
+      delivered: '🏁 Entregado',
     };
-    return map[status] || status;
+    return statusMap[status] || status;
   };
 
-  const getStatusColor = (status) => {
-    const map = {
-      'pending': '#ffc107',
-      'accepted': '#17a2b8',
-      'loaded': '#007bff',
-      'delivered': '#28a745',
-      'cancelled': '#dc3545'
-    };
-    return map[status] || '#6c757d';
-  };
-
-  const filteredShipments = shipments.filter(s => filter === 'todos' || s.status === filter);
+  if (!userData) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.card}>
+          <h2>Acceso denegado</h2>
+          <p>Inicia sesión para ver tus envíos.</p>
+          <button onClick={() => navigate('/login')} style={styles.backButton}>
+            Iniciar sesión
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <button onClick={() => navigate('/')} style={styles.backButton}>← Volver al mapa</button>
+        <button onClick={() => navigate('/client/home')} style={styles.backButton}>
+          ← Volver al mapa
+        </button>
         <h1 style={styles.title}>📦 Mis envíos</h1>
-        <button onClick={loadShipments} style={styles.refreshButton}>🔄</button>
+        <button onClick={loadShipments} style={styles.refreshButton}>
+          🔄
+        </button>
       </div>
 
-      <div style={styles.filters}>
-        {['todos', 'pending', 'accepted', 'loaded', 'delivered'].map(s => (
-          <button key={s} onClick={() => setFilter(s)} style={{...styles.filterBtn, ...(filter === s ? styles.filterActive : {})}}>
-            {s === 'todos' ? 'Todos' : getStatusText(s)}
-          </button>
-        ))}
-      </div>
-
-      {loading && <div style={styles.loading}>Cargando...</div>}
-      {error && <div style={styles.error}>❌ {error}</div>}
-
-      {!loading && !error && filteredShipments.length === 0 && (
-        <div style={styles.empty}>
-          <div style={styles.emptyIcon}>📭</div>
-          <div>No hay envíos</div>
+      {error && (
+        <div style={styles.error}>
+          ❌ Error: {error}
+          <button onClick={loadShipments} style={styles.retryButton}>Reintentar</button>
         </div>
       )}
 
-      <div style={styles.list}>
-        {filteredShipments.map(shipment => {
-          const isCompleted = shipment.status === 'delivered';
-          const isRated = !!shipment.rating;
-          const isPending = shipment.status === 'pending';
-          const isActive = ['accepted', 'loaded'].includes(shipment.status);
-          const canRate = isCompleted && !isRated;
-
-          return (
-            <div key={shipment.id} style={{...styles.card, opacity: isCompleted ? 0.8 : 1, background: isCompleted ? '#f5f5f5' : 'white'}}>
+      {loading ? (
+        <div style={styles.loading}>Cargando envíos...</div>
+      ) : shipments.length === 0 ? (
+        <div style={styles.empty}>
+          <div style={styles.emptyIcon}>📭</div>
+          <div style={styles.emptyText}>No tienes envíos</div>
+          <div style={styles.emptySub}>Solicita tu primer envío</div>
+          <button onClick={() => navigate('/client/request')} style={styles.requestButton}>
+            Solicitar envío
+          </button>
+        </div>
+      ) : (
+        <div style={styles.list}>
+          {shipments.map((shipment) => (
+            <div key={shipment.id} style={styles.card}>
               <div style={styles.cardHeader}>
-                <span style={styles.shipmentId}>#{shipment.id.slice(-6)}</span>
-                <span style={{...styles.statusBadge, backgroundColor: getStatusColor(shipment.status)}}>
-                  {getStatusText(shipment.status)}
+                <span style={styles.tripId}>#{shipment.id.slice(-6)}</span>
+                <span style={styles.badge(getStatusLabel(shipment.status))}>
+                  {getStatusLabel(shipment.status)}
+                </span>
+                <span style={styles.time}>
+                  {shipment.createdAt?.toDate?.() 
+                    ? new Date(shipment.createdAt.toDate()).toLocaleDateString()
+                    : 'Fecha desconocida'}
                 </span>
               </div>
-
-              <div style={styles.addresses}>
-                <div>📍 {shipment.pickupAddress}</div>
-                <div>🏁 {shipment.deliveryAddress}</div>
-              </div>
-
+              
               <div style={styles.cargoInfo}>
-                📦 {shipment.cargoType} - {shipment.cargoWeight} kg
+                <div style={styles.cargoType}>
+                  📦 {shipment.cargoType || 'Carga general'} • {shipment.cargoWeight} kg
+                </div>
               </div>
-
-              <div style={styles.driverInfo}>
-                {shipment.driverName ? `🚚 Conductor: ${shipment.driverName}` : '⏳ Buscando conductor...'}
+              
+              <div style={styles.addresses}>
+                <div style={styles.addressRow}>
+                  <span style={styles.addressIcon}>📍</span>
+                  <span style={styles.addressText}>{shipment.pickupAddress}</span>
+                </div>
+                <div style={styles.addressRow}>
+                  <span style={styles.addressIcon}>🏁</span>
+                  <span style={styles.addressText}>{shipment.deliveryAddress}</span>
+                </div>
               </div>
-
-              <div style={styles.actions}>
-                {isPending && (
-                  <button onClick={() => handleCancelShipment(shipment.id)} style={styles.cancelBtn}>
-                    ❌ Cancelar
-                  </button>
-                )}
-
-                {isActive && (
-                 // En el botón "Seguir envío"
-<button onClick={() => navigate('/', { state: { shipmentId: shipment.id } })}>
-  📍 Seguir envío
-</button>
-                )}
-
-                {canRate && (
-                  <button onClick={() => openRatingModal(shipment.id)} style={styles.rateBtn}>
-                    ⭐ Calificar viaje
-                  </button>
-                )}
-
-                {isRated && (
-                  <div style={styles.ratedBox}>
-                    ⭐ Calificado: {shipment.rating.stars}/5
-                    {shipment.rating.comment && <div style={styles.ratedComment}>"{shipment.rating.comment}"</div>}
-                  </div>
-                )}
+              
+              <div style={styles.details}>
+                <div style={styles.detailRow}>
+                  <span>🚚 Conductor:</span>
+                  <span>{shipment.driverName || 'Sin asignar'}</span>
+                </div>
+                <div style={styles.detailRow}>
+                  <span>💰 Precio:</span>
+                  <span style={styles.price}>
+                    {shipment.agreedPrice 
+                      ? formatPrice(shipment.agreedPrice)
+                      : shipment.proposedPrice 
+                        ? `Propuesta: ${formatPrice(shipment.proposedPrice)}`
+                        : 'Por acordar'}
+                  </span>
+                </div>
               </div>
+              
+              <button
+                onClick={() => {
+                  if (shipment.status === 'delivered') {
+                    navigate(`/client/ratings?shipment=${shipment.id}`);
+                  } else {
+                    navigate(`/track/${shipment.id}`);
+                  }
+                }}
+                style={styles.viewButton}
+              >
+                {shipment.status === 'delivered' ? '⭐ Calificar' : '👀 Ver seguimiento'}
+              </button>
             </div>
-          );
-        })}
-      </div>
-
-      {/* Modal de calificación */}
-      {ratingModal.open && (
-        <>
-          <div style={styles.modalOverlay} onClick={() => setRatingModal({ open: false, shipmentId: null })} />
-          <div style={styles.modal}>
-            <h3 style={styles.modalTitle}>⭐ Calificar viaje</h3>
-            <div style={styles.stars}>
-              {[1,2,3,4,5].map(star => (
-                <span key={star} onClick={() => setRatingValue(star)} style={{fontSize: 40, cursor: 'pointer', color: star <= ratingValue ? '#FFD700' : '#ccc'}}>★</span>
-              ))}
-            </div>
-            <textarea placeholder="Escribe un comentario (opcional)" value={ratingComment} onChange={(e) => setRatingComment(e.target.value)} style={styles.commentInput} rows={3} />
-            <div style={styles.modalActions}>
-              <button onClick={() => setRatingModal({ open: false, shipmentId: null })} style={styles.cancelModalBtn}>Cancelar</button>
-              <button onClick={submitRating} disabled={submitting} style={styles.submitModalBtn}>{submitting ? 'Enviando...' : 'Enviar calificación'}</button>
-            </div>
-          </div>
-        </>
+          ))}
+        </div>
       )}
     </div>
   );
 };
 
 const styles = {
-  container: { minHeight: '100vh', background: '#f5f5f5', padding: '20px' },
-  header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' },
-  backButton: { background: '#667eea', color: 'white', border: 'none', borderRadius: '8px', padding: '8px 16px', cursor: 'pointer' },
-  refreshButton: { background: '#f0f0f0', border: 'none', borderRadius: '8px', padding: '8px 12px', cursor: 'pointer', fontSize: '18px' },
-  title: { margin: 0, fontSize: '20px', fontWeight: '600' },
-  filters: { display: 'flex', gap: '8px', marginBottom: '20px', flexWrap: 'wrap' },
-  filterBtn: { padding: '6px 12px', borderRadius: '20px', border: '1px solid #ddd', background: 'white', cursor: 'pointer', fontSize: '12px' },
-  filterActive: { background: '#667eea', color: 'white', borderColor: '1px solid #667eea' },
-  loading: { textAlign: 'center', padding: '40px', color: '#666' },
-  error: { textAlign: 'center', padding: '20px', color: '#c00', background: '#fee', borderRadius: '12px' },
-  empty: { textAlign: 'center', padding: '40px', background: 'white', borderRadius: '16px' },
-  emptyIcon: { fontSize: '48px', marginBottom: '16px' },
-  list: { display: 'flex', flexDirection: 'column', gap: '12px' },
-  card: { background: 'white', borderRadius: '16px', padding: '16px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' },
-  cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid #eee' },
-  shipmentId: { fontFamily: 'monospace', fontSize: '11px', color: '#888' },
-  statusBadge: { padding: '4px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '500', color: 'white' },
-  addresses: { fontSize: '13px', marginBottom: '8px', color: '#333' },
-  cargoInfo: { fontSize: '12px', color: '#666', marginBottom: '8px' },
-  driverInfo: { fontSize: '12px', color: '#888', marginBottom: '12px' },
-  actions: { display: 'flex', gap: '8px', flexWrap: 'wrap' },
-  cancelBtn: { padding: '8px 12px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '12px' },
-  trackBtn: { padding: '8px 12px', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '12px' },
-  rateBtn: { padding: '8px 12px', background: '#ffc107', color: '#333', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '12px' },
-  ratedBox: { padding: '8px', background: '#e8f5e9', borderRadius: '8px', textAlign: 'center', fontSize: '12px', color: '#2e7d32' },
-  ratedComment: { fontSize: '11px', color: '#666', marginTop: '4px' },
-  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 2000 },
-  modal: { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'white', borderRadius: '20px', padding: '24px', maxWidth: '320px', width: '90%', zIndex: 2001 },
-  modalTitle: { textAlign: 'center', marginBottom: '20px' },
-  stars: { display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '20px' },
-  commentInput: { width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', resize: 'vertical', marginBottom: '20px' },
-  modalActions: { display: 'flex', gap: '12px' },
-  cancelModalBtn: { flex: 1, padding: '10px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' },
-  submitModalBtn: { flex: 1, padding: '10px', background: '#28a745', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }
+  container: {
+    minHeight: '100vh',
+    background: '#f5f5f5',
+    padding: '20px'
+  },
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: '20px',
+    flexWrap: 'wrap',
+    gap: '10px'
+  },
+  backButton: {
+    background: '#667eea',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    padding: '8px 16px',
+    cursor: 'pointer',
+    fontSize: '14px'
+  },
+  refreshButton: {
+    background: '#f0f0f0',
+    border: 'none',
+    borderRadius: '8px',
+    padding: '8px 12px',
+    cursor: 'pointer',
+    fontSize: '18px'
+  },
+  title: {
+    margin: 0,
+    fontSize: '20px',
+    fontWeight: '600'
+  },
+  error: {
+    background: '#fee',
+    color: '#c00',
+    padding: '12px',
+    borderRadius: '8px',
+    marginBottom: '16px',
+    textAlign: 'center'
+  },
+  retryButton: {
+    marginTop: '8px',
+    padding: '6px 12px',
+    background: '#667eea',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer'
+  },
+  loading: {
+    textAlign: 'center',
+    padding: '40px',
+    color: '#666'
+  },
+  empty: {
+    textAlign: 'center',
+    padding: '60px 20px',
+    background: 'white',
+    borderRadius: '16px'
+  },
+  emptyIcon: {
+    fontSize: '48px',
+    marginBottom: '16px'
+  },
+  emptyText: {
+    fontSize: '18px',
+    fontWeight: '500',
+    marginBottom: '8px'
+  },
+  emptySub: {
+    fontSize: '14px',
+    color: '#888',
+    marginBottom: '16px'
+  },
+  requestButton: {
+    padding: '12px 24px',
+    background: '#667eea',
+    color: 'white',
+    border: 'none',
+    borderRadius: '12px',
+    fontSize: '16px',
+    fontWeight: '600',
+    cursor: 'pointer'
+  },
+  list: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px'
+  },
+  card: {
+    background: 'white',
+    borderRadius: '16px',
+    padding: '16px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+  },
+  cardHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '12px',
+    paddingBottom: '8px',
+    borderBottom: '1px solid #eee',
+    flexWrap: 'wrap',
+    gap: '8px'
+  },
+  tripId: {
+    fontFamily: 'monospace',
+    fontSize: '11px',
+    color: '#888'
+  },
+  badge: (text) => ({
+    padding: '4px 8px',
+    borderRadius: '12px',
+    fontSize: '11px',
+    fontWeight: '500',
+    background: text.includes('Pendiente') ? '#fff3cd' :
+                text.includes('Aceptado') ? '#d4edda' :
+                text.includes('En ruta') ? '#cce5ff' :
+                text.includes('Entregado') ? '#e2e3e5' : '#f8f9fa',
+    color: text.includes('Pendiente') ? '#856404' :
+           text.includes('Aceptado') ? '#155724' :
+           text.includes('En ruta') ? '#004085' :
+           text.includes('Entregado') ? '#383d41' : '#6c757d'
+  }),
+  time: {
+    fontSize: '11px',
+    color: '#888'
+  },
+  cargoInfo: {
+    marginBottom: '12px'
+  },
+  cargoType: {
+    background: '#e3f2fd',
+    padding: '6px 10px',
+    borderRadius: '8px',
+    fontSize: '13px',
+    fontWeight: '500',
+    color: '#1565c0',
+    display: 'inline-block'
+  },
+  addresses: {
+    marginBottom: '12px',
+    padding: '8px',
+    background: '#f8f9fa',
+    borderRadius: '8px'
+  },
+  addressRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '13px',
+    marginBottom: '6px'
+  },
+  addressIcon: {
+    fontSize: '14px',
+    minWidth: '24px'
+  },
+  addressText: {
+    color: '#333',
+    flex: 1
+  },
+  details: {
+    marginBottom: '16px',
+    padding: '8px 0',
+    borderTop: '1px solid #eee',
+    borderBottom: '1px solid #eee'
+  },
+  detailRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '13px',
+    padding: '4px 0',
+    color: '#555'
+  },
+  price: {
+    fontWeight: '600',
+    color: '#28a745'
+  },
+  viewButton: {
+    width: '100%',
+    padding: '12px',
+    background: '#667eea',
+    color: 'white',
+    border: 'none',
+    borderRadius: '12px',
+    fontSize: '14px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'transform 0.2s'
+  }
 };
