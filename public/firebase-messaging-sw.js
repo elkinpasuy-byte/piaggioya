@@ -3,12 +3,12 @@ importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js'
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-compat.js');
 
 firebase.initializeApp({
-  apiKey: "TU_API_KEY",
-  authDomain: "TU_AUTH_DOMAIN",
-  projectId: "TU_PROJECT_ID",
-  storageBucket: "TU_STORAGE_BUCKET",
-  messagingSenderId: "TU_MESSAGING_SENDER_ID",
-  appId: "TU_APP_ID"
+ apiKey: "AIzaSyBQd7CmSN2jsiEOCn-7P3ngyboa2pD82CM",
+  authDomain: "piaggioya-b9c47.firebaseapp.com",
+  projectId: "piaggioya-b9c47",
+  storageBucket: "piaggioya-b9c47.firebasestorage.app",
+  messagingSenderId: "539480492550",
+  appId: "1:539480492550:web:7f4ce259b3a7f4fa7f5187"
 });
 
 const messaging = firebase.messaging();
