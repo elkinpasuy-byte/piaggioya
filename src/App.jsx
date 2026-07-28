@@ -9,9 +9,12 @@ import { AdminRoutes } from './routes/AdminRoutes';
 import { TripTracking } from './pages/TripTracking';
 import ClientChat from './pages/ClientChat';
 import ClientRatings from './pages/client/ClientRatings'; // ← NUEVO
+import { useNotifications } from './hooks/useNotifications';
 
 // ==================== APP ====================
 function App() {
+  const { user } = useAuth(); // ← Asegúrate de tener esto
+  useNotifications(); // ← Solo se ejecuta si hay usuario (dentro del hook ya verificas)
   return (
     <AuthProvider>
       <Router>

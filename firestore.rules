@@ -39,11 +39,10 @@ service cloud.firestore {
     // ============================================================
     //  COLECCIÓN: users
     // ============================================================
-    match /users/{userId} {
-      // Leer: cualquier usuario autenticado puede leer perfiles públicos
+    match /users/{userId} {// Leer: cualquier usuario autenticado puede leer perfiles públicos
       allow read: if isAuthenticated();
       
-      // Crear: solo el propio usuario puede crear su perfil (en registro)
+  // Crear: solo el propio usuario puede crear su perfil (en registro)
       allow create: if isAuthenticated() && request.auth.uid == userId;
       
       // Actualizar: el propio usuario o admin
